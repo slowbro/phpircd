@@ -6,21 +6,39 @@ $core = new core('config.ini');
 
 echo "listening for new clients\n";
 while(true){
-	if(($new = @socket_accept($core->_socket)) !== FALSE){
+/*	if(($new = @socket_accept($core->_socket)) !== FALSE){
         	echo "new client\n";
                 $client['socket'] = $new;
 		socket_getpeername($new, $client['address']);
 		$core->_clients[] = $client;
-        }
-	foreach($core->_clients as $key => $value){
-		if(false !== ($buf = @socket_read($value['socket'], 1024, PHP_NORMAL_READ))){
+        }*/
+	$un = NULL;
+	$reads = $core->_client_sock;
+	$reads[] = $core->_socket;
+	if(socket_select($reads, $un, $un, 0) < 1){
+		continue;
+	}
+	while(in_array($core->_socket, $reads)){
+		$new = @socket_accept($core->_socket);
+		echo "new client\n";
+		$k = $core->sock_num + 1;
+		$core->_client_sock[$k] = $new;
+		socket_getpeername($new, $client['address']);
+		$core->_clients[$k] = $client;
+		unset($reads[array_search($core->_socket, $reads)]);
+	}
+	foreach($reads as $key => $value){
+		if(false !== ($buf = @socket_read($value, 1024, 1))){
 			echo $buf;
 		} else {
-			echo "Closing Link: client {$value['address']}: ".socket_strerror(socket_last_error($value['socket']))."\n";
+			echo "Closing Link: client {$core->_clients[$key]['address']}: ".socket_strerror(socket_last_error($value))."\n";
+			unset($reads[$key]);
 			unset($core->_clients[$key]);
+			unset($core->_client_sock[$key]);
 		}
 	}
+	
         usleep(700);
 }
-
+socket_close($this->_socket);
 ?>

@@ -6,7 +6,9 @@ var $config;
 var $address;
 var $port;
 var $_clients = array();
+var $_client_sock = array();
 var $_socket;
+var $sock_num;
 
 function __construct($config){
 	$this->config = parse_ini_file($config, true);
