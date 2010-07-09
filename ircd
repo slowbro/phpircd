@@ -8,9 +8,18 @@ echo "listening for new clients\n";
 while(true){
 	if(($new = @socket_accept($core->_socket)) !== FALSE){
         	echo "new client\n";
-                $core->_clients[] = $new;
-                var_dump($core->_clients);
+                $client['socket'] = $new;
+		socket_getpeername($new, $client['address']);
+		$core->_clients[] = $client;
         }
+	foreach($core->_clients as $key => $value){
+		if(false !== ($buf = @socket_read($value['socket'], 1024, PHP_NORMAL_READ))){
+			echo $buf;
+		} else {
+			echo "Closing Link: client {$value['address']}: ".socket_strerror(socket_last_error($value['socket']))."\n";
+			unset($core->_clients[$key]);
+		}
+	}
         usleep(700);
 }
 
