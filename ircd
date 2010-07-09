@@ -1,0 +1,7 @@
+#!/usr/bin/php -q
+<?php
+
+require("core.class.php");
+$core = new core('config.ini');
+
+?>
