@@ -2,8 +2,10 @@
 <?php
 
 require("core.class.php");
-$core = new core('config.ini');
-
+require("ircd.class.php");
+$core = new core();
+$ircd = new ircd();
+$core->init('config.ini');
 echo "listening for new clients\n";
 while(true){
 	$un = NULL;
@@ -14,6 +16,12 @@ while(true){
 		continue;
 	}
 	while(in_array($core->_socket, $reads)){
+		if(count($core->_clients) > $core->config['me']['maxusers']){
+			$new = @socket_accept($core->_socket);
+			$core->write($new, "ERROR: Maximum clients reached. Please use a different server.");
+			$core->close($new, true);
+			continue;
+		}
 		$new = @socket_accept($core->_socket);
 		socket_set_nonblock($new);
 		echo "new client\n";
@@ -32,7 +40,18 @@ while(true){
 		if(false !== ($buf = @socket_read($value, 1024, PHP_NORMAL_READ))){
 			$data = trim($buf);
 			if(!empty($data)){
-				$core->write($core->_client_sock[$key], strrev($data));
+				//$core->write($core->_client_sock[$key], strrev($data));
+				if($value['registered']){
+					$ircd->process($data, $key);
+				} else {
+					$ircd->newConnection($data, $key);
+				}
+			} else {
+				echo "Closing Link: client {$core->_clients[$key]['address']}: Client Exited\n";
+				@socket_close($core->_client_sock[$key]);
+				unset($reads[$key]);
+	                        unset($core->_clients[$key]);
+        	                unset($core->_client_sock[$key]);
 			}
 		} else {
 			echo "Closing Link: client {$core->_clients[$key]['address']}: ".socket_strerror(socket_last_error($value))."\n";

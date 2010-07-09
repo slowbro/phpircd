@@ -7,6 +7,10 @@ Basically a plain socket server at the moment.
 (edit 1)
 Babysteps towards actual irc stuff. Closes link on ping timeout, working on initial connect sequence.
 Expect ircd.class.php rolled out within a day or so.
+(edit 2)
+Initial ircd class setup.
+NICK error checking working for initial connect. USER next.
+Still need to legitimately NOTICE AUTH instead of just sending that junk.
 
 7/8/2010 -
 Initial alpha-absolutely-nothing-is-done-at-all release.
