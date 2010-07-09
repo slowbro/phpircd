@@ -6,30 +6,34 @@ $core = new core('config.ini');
 
 echo "listening for new clients\n";
 while(true){
-/*	if(($new = @socket_accept($core->_socket)) !== FALSE){
-        	echo "new client\n";
-                $client['socket'] = $new;
-		socket_getpeername($new, $client['address']);
-		$core->_clients[] = $client;
-        }*/
 	$un = NULL;
 	$reads = $core->_client_sock;
 	$reads[] = $core->_socket;
-	if(socket_select($reads, $un, $un, 0) < 1){
+	$writes = $reads;
+	if(socket_select($reads, $writes, $un, 0) < 1){
 		continue;
 	}
 	while(in_array($core->_socket, $reads)){
 		$new = @socket_accept($core->_socket);
+		socket_set_nonblock($new);
 		echo "new client\n";
-		$k = $core->sock_num + 1;
-		$core->_client_sock[$k] = $new;
+		$core->sock_num++;
+		$core->_client_sock[$core->sock_num] = $new;
 		socket_getpeername($new, $client['address']);
-		$core->_clients[$k] = $client;
+		$client['lastping'] = time();
+		$client['nick'] = NULL;
+		$client['registered'] = FALSE;
+		$core->_clients[$core->sock_num] = $client;
+		$core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :");
+		$core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :");
 		unset($reads[array_search($core->_socket, $reads)]);
 	}
 	foreach($reads as $key => $value){
-		if(false !== ($buf = @socket_read($value, 1024, 1))){
-			echo $buf;
+		if(false !== ($buf = @socket_read($value, 1024, PHP_NORMAL_READ))){
+			$data = trim($buf);
+			if(!empty($data)){
+				$core->write($core->_client_sock[$key], strrev($data));
+			}
 		} else {
 			echo "Closing Link: client {$core->_clients[$key]['address']}: ".socket_strerror(socket_last_error($value))."\n";
 			unset($reads[$key]);
@@ -37,7 +41,17 @@ while(true){
 			unset($core->_client_sock[$key]);
 		}
 	}
-	
+	//do this every iteration regarless of socket state
+	foreach($core->_clients as $key => $value){
+		if((time() - $value['lastping']) > $core->config['ircd']['pingfreq']){
+			if(!$value['registered']){
+				$core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['address']." (Ping timeout)");
+				$core->close($key);
+			} else {
+				//ircd class PING
+			}
+		}
+	}
         usleep(700);
 }
 socket_close($this->_socket);

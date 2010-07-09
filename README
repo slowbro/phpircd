@@ -4,6 +4,9 @@ this readme is a changelog lololol
 
 7/9/2010 -
 Basically a plain socket server at the moment.
+(edit 1)
+Babysteps towards actual irc stuff. Closes link on ping timeout, working on initial connect sequence.
+Expect ircd.class.php rolled out within a day or so.
 
 7/8/2010 -
 Initial alpha-absolutely-nothing-is-done-at-all release.

@@ -2,6 +2,7 @@
 
 class core {
 
+var $version = "phpircd v0.1a";
 var $config;
 var $address;
 var $port;
@@ -18,6 +19,17 @@ function __construct($config){
 	socket_bind($this->_socket,$this->address,$this->port);
 	socket_listen($this->_socket);
 	socket_set_nonblock($this->_socket);
+}
+
+function write($sock, $data){
+	$data = $data."\r\n";
+	socket_write($sock, $data, strlen($data));
+}
+
+function close($key){
+        socket_close($this->_client_sock[$key]);
+	unset($this->_clients[$key]);
+	unset($this->_client_sock[$key]);	
 }
 
 }
