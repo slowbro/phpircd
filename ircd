@@ -1,8 +1,8 @@
 #!/usr/bin/php -q
 <?php
 
-require("core.class.php");
-require("ircd.class.php");
+require("classes/core.class.php");
+require("classes/ircd.class.php");
 $core = new core();
 $ircd = new ircd();
 $core->init('config.ini');
