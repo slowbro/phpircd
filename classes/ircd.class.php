@@ -14,18 +14,20 @@ function newConnection($in, $key){
 		//USER nick mode unused :Real Name
 		$err = FALSE;
 		while($err == FALSE){
-		if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $e['1'])){
-			$err = "Illegal characters.";
+		if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $e['1'])){
+			$err = "{$e['1']}:Illegal characters.";
 			continue;
 		}
 		//if(modes n shit){
 			
 		//}
-		unset($e['3']); //unused
 		if(count($e) == 5){
 			$rn = $e['4'];
+			if($rn[0] == ":"){
+                                $rn = substr($rn, 1);
+                        }
 		} else {
-			for($i=4;$i > count($e);$i++){
+			for($i=4;$i < count($e);$i++){
 				$rn[] = $e[$i];
 			}
 			$rn = implode(" ", $rn);
@@ -33,22 +35,41 @@ function newConnection($in, $key){
 				$rn = substr($rn, 1);
 			}
 		}
-		if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,19}$/", $e['1'])){
-			$err = "Illegal characters.";
+		if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\} ]{0,19}$/", $rn)){
+			$err = "$rn:Illegal characters.";
 			continue;
 		}
+		break;
 		}
 		if($err){
-			$this->error('432', $key,$e['1'].":$err");
+			$this->error('432', $key,"$err");
+		} else {
+			unset($e['3']); //unused
+			$core->_clients[$key]['username'] = $e['1'];
+			$core->_clients[$key]['usermode'] = "";
+			$core->_clients[$key]['realname'] = $rn;
+			$core->_clients[$key]['lastping'] = time();
+			if($core->_clients[$key]['regbit'] ^ 1){
+				$core->_clients[$key]['regbit'] += 1;
+			}
+			if($core->_clients[$key]['regbit'] == 3){
+                                $core->_clients[$key]['registered'] = TRUE;
+				$core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
+				$this->welcome($key);
+                        }
 		}
 
 		break;
 		case 'nick':
 		if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $e['1'])){
 			$core->_clients[$key]['nick'] = $e['1'];
-			$core->_clients[$key]['regbit'] += 2;
+			if($core->_clients[$key]['regbit'] ^ 2){
+				$core->_clients[$key]['regbit'] +=2;
+			}
 			if($core->_clients[$key]['regbit'] == 3){
-				$core->_clients[$key]['registered'] == TRUE;
+				$core->_clients[$key]['registered'] = TRUE;
+				$core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
+				$this->welcome($key);
 			}
 		} else {
 			$this->error('432', $key, $e['1'].":Illegal characters.");
@@ -96,6 +117,13 @@ function error($numeric, $key, $extra=""){
 	break;
 	}
 	$core->write($socket, $message);
+}
+
+function welcome($key){
+	global $core;
+	$socket = $core->_client_sock[$key];
+	$cl = $core->_clients[$key];
+	$core->write($socket, ":{$core->servname} 001 {$cl['nick']} :Welcome to the {$core->network} IRC network, {$cl['prefix']}");
 }
 
 function user($key, $pa){

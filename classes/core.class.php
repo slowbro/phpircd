@@ -11,14 +11,16 @@ var $_client_sock = array();
 var $_socket;
 var $sock_num;
 var $servname;
+var $network;
 
 function init($config){
 	$this->config = parse_ini_file($config, true);
 	$this->address = $this->config['core']['address'];
 	$this->port = $this->config['core']['port'];
 	$this->servname = $this->config['me']['servername'];
+	$this->network = $this->config['me']['network'];
 	$this->_socket = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
-	socket_bind($this->_socket,$this->address,$this->port);
+	socket_bind($this->_socket,$this->address,$this->port) or die('Could not bind socket.');
 	socket_listen($this->_socket);
 	socket_set_nonblock($this->_socket);
 }
