@@ -31,6 +31,7 @@ while(true){
 		$client['lastping'] = time();
 		$client['nick'] = NULL;
 		$client['registered'] = FALSE;
+		$client['regbit'] = 0;
 		$core->_clients[$core->sock_num] = $client;
 		$core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :");
 		$core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :");
