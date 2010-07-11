@@ -12,6 +12,10 @@ function newConnection($in, $key){
 		break;
 		case 'user':
 		//USER nick mode unused :Real Name
+		if(count($e) < 5){
+			$this->error('461', $key, 'USER');
+			break;
+		}
 		$err = FALSE;
 		while($err == FALSE){
 		if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $e['1'])){
@@ -61,6 +65,10 @@ function newConnection($in, $key){
 
 		break;
 		case 'nick':
+		if(count($e) < 2){
+                        $this->error('431', $key);
+                        break;
+                }
 		if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $e['1'])){
 			$core->_clients[$key]['nick'] = $e['1'];
 			if($core->_clients[$key]['regbit'] ^ 2){
@@ -115,6 +123,8 @@ function error($numeric, $key, $extra=""){
 	$extra = explode(":",$extra);
 	$message = $prefix."$extra[0] :Erroneous nickname".($extra['1']?": ".$extra['1']:"");
 	break;
+	case '461':
+	$message = $prefix."$extra :Not enough parameters.";
 	}
 	$core->write($socket, $message);
 }
@@ -124,6 +134,9 @@ function welcome($key){
 	$socket = $core->_client_sock[$key];
 	$cl = $core->_clients[$key];
 	$core->write($socket, ":{$core->servname} 001 {$cl['nick']} :Welcome to the {$core->network} IRC network, {$cl['prefix']}");
+	$core->write($socket, ":{$core->servname} 002 {$cl['nick']} :Your host is {$core->servname} running {$core->version}");
+	$core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
+	$core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} <umodes> <chanmodes>");
 }
 
 function user($key, $pa){

@@ -19,6 +19,7 @@ function init($config){
 	$this->port = $this->config['core']['port'];
 	$this->servname = $this->config['me']['servername'];
 	$this->network = $this->config['me']['network'];
+	$this->createdate = $this->config['me']['created'];
 	$this->_socket = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
 	socket_bind($this->_socket,$this->address,$this->port) or die('Could not bind socket.');
 	socket_listen($this->_socket);
