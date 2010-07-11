@@ -2,10 +2,15 @@ phpircd v0.1a
 this readme is a changelog lololol
 
 
+7/11/2010 -
+Fixed security hole (already) in ircd.class.php that would allow clients to call functions they
+weren't supposed to such as newConnection().
+Fixed a performance issue with socket_select() and its if bracket.
+
 7/10/2010 -
 Error handling function introduced.
 (edit 1)
-Welcome message(s) progress. Need to figure out the 005 numeric which is nor RPL_ISUPPORT, probably 
+Welcome message(s) progress. Need to figure out the 005 numeric which is now RPL_ISUPPORT, probably 
 going to just fill it with nonsense for now until the server is more complete and it is needed.
 More error checking added on initial connect, check for parameter amount, and checks params against
 some regex.

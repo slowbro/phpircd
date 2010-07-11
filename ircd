@@ -12,9 +12,8 @@ while(true){
 	$reads = $core->_client_sock;
 	$reads[] = $core->_socket;
 	$writes = $reads;
-	if(socket_select($reads, $writes, $un, 0) < 1){
-		continue;
-	}
+	if(socket_select($reads, $writes, $un, 0) > 0){
+	
 	while(in_array($core->_socket, $reads)){
 		if(count($core->_clients) > $core->config['me']['maxusers']){
 			$new = @socket_accept($core->_socket);
@@ -61,6 +60,7 @@ while(true){
 			unset($core->_client_sock[$key]);
 		}
 	}
+	}//end if socketselect
 	//do this every iteration regarless of socket state
 	foreach($core->_clients as $key => $value){
 		if((time() - $value['lastping']) > $core->config['ircd']['pingfreq']){

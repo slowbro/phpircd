@@ -2,6 +2,8 @@
 
 class ircd {
 
+var $forbidden = array("newConnecntion", "process", "welcome");
+
 function newConnection($in, $key){
 	global $core;
 	$e = explode(" ", $in);
@@ -93,7 +95,7 @@ function process($in, $key){
 	$command = strtolower($e['0']);
 	unset($e['0']);
 	$params = implode (" ", $e);
-	if(method_exists(__CLASS__,$command)){
+	if(method_exists(__CLASS__,$command) && array_search($command, $this->forbidden) === FALSE){
 		$this->$command($key, $params);
 	}
 }
