@@ -21,7 +21,7 @@ function newConnection($in, $key){
 		$err = FALSE;
 		while($err == FALSE){
 		if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`_\{\}]{0,16}$/", $e['1'])){
-			$err = "{$e['1']}:Illegal characters. 1";
+			$err = "{$e['1']}:Illegal characters.";
 			continue;
 		}
 		//if(modes n shit){
@@ -42,7 +42,7 @@ function newConnection($in, $key){
 			}
 		}
 		if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`_\{\} ]{1}[a-zA-Z0-9\[\]\\\|\^\`_\{\} ]{0,19}$/", $rn)){
-			$err = "$rn:Illegal characters. 2";
+			$err = "$rn:Illegal characters.";
 			continue;
 		}
 		break;
@@ -86,7 +86,7 @@ function newConnection($in, $key){
 				$this->welcome($key);
 			}
 		} else {
-			$this->error('432', $key, $e['1'].":Illegal characters.3");
+			$this->error('432', $key, $e['1'].":Illegal characters.");
 		}
 		break;
 	}

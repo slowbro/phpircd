@@ -1,0 +1,12 @@
+       _          ___ ____   ____    _ 
+ _ __ | |__  _ __|_ _|  _ \ / ___|__| |
+| '_ \| '_ \| '_ \| || |_) | |   / _` |
+| |_) | | | | |_) | ||  _ <| |__| (_| |
+| .__/|_| |_| .__/___|_| \_\\____\__,_|
+|_|holy crap|_|it's an ircd in php lol
+
+Rules:
+
+	* Do good stuff		* Don't do bad stuff
+
+	* Chat Hard		* Praise all opers
