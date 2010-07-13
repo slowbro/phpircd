@@ -2,7 +2,7 @@
 
 class core {
 
-var $version = "phpircd v0.1e";
+var $version = "phpircd v0.2b";
 var $config;
 var $address;
 var $port;
@@ -26,7 +26,7 @@ function init($config){
 	    echo socket_strerror(socket_last_error($this->_socket))."\n";
 	    exit;
 	} 
-	socket_bind($this->_socket,$this->address,$this->port) or die('Could not bind socket.');
+	@socket_bind($this->_socket,$this->address,$this->port) or die("Could not bind socket: ".socket_strerror(socket_last_error($this->_socket))."\n");
 	socket_listen($this->_socket);
 	socket_set_nonblock($this->_socket);
 }
@@ -38,7 +38,7 @@ function write($sock, $data){
 
 function close($key, $sock=false){
         if($sock){
-                socket_close($sock);
+                socket_close($key);
 	} else {
 		socket_close($this->_client_sock[$key]);
 		unset($this->_clients[$key]);

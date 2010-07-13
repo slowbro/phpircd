@@ -1,6 +1,14 @@
-phpircd v0.2a
+phpircd v0.2b
 this readme is a changelog lololol
 
+
+7/13/2010 -
+* NICK command now works, minus sending it to channels, seeing as JOIN hasn't been made yet.
+* QUIT command also works, with the same current caveats of NICK.
+* Fixed space in 005 message after PREFIX
+* Fixed PING issue where command were not being treated as activity.
+* Added more error messages, including ERR_NOTREGISTERED, ERR_UNKNOWNCOMMAND and ERR_NICKNAMEINUSE.
+* Version is now 0.2b because I have no scheme to the version numbers and like to change the frequently.
 
 7/12/2010 -
 * Sorta-finished welcome sequence. MOTD displays, if there is one (motd.txt), if not it throws ERR_NOMOTD.

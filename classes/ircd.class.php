@@ -9,6 +9,21 @@ function newConnection($in, $key){
 	$e = explode(" ", $in);
         $command = strtolower($e['0']);
 	switch(@$command){
+		case 'quit':
+		$p = $e;
+		unset($p['0']);
+		if(count($p) > 1){
+			$p = implode(" ", $p);
+		} elseif(count($p) == 0){
+			$p = "";
+		} else {
+			$p = $p['1'];
+		}
+		if($p[0] == ":"){
+			$p = substr($p, 1);
+		}
+		$this->quit($key, $p);
+		break;
 		case 'pass':
 
 		break;
@@ -73,6 +88,14 @@ function newConnection($in, $key){
                         $this->error('431', $key);
                         break;
                 }
+        	$nicks = array();
+		foreach($core->_clients as $value){
+			$nicks[] = $value['nick'];
+		}
+	        if(array_search($e['1'], $nicks) !== FALSE){
+        	        $this->error('433', $key, $e['1']);
+                	break;
+	        }
 		if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $e['1'])){
 			$core->_clients[$key]['nick'] = $e['1'];
 			if($core->_clients[$key]['regbit'] ^ 2){
@@ -89,6 +112,8 @@ function newConnection($in, $key){
 			$this->error('432', $key, $e['1'].":Illegal characters.");
 		}
 		break;
+		default:
+		$this->error('451', $key, $e['0']);
 	}
 
 }
@@ -99,14 +124,17 @@ function process($in, $key){
 	unset($e['0']);
 	$params = implode (" ", $e);
 	if(method_exists(__CLASS__,$command) && array_search($command, $this->forbidden) === FALSE){
+		$core->_clients[$key]['lastping'] = time();
 		$this->$command($key, $params);
+	} else {
+		$this->error('421', $key, $command);
 	}
 }
 
 function error($numeric, $key, $extra=""){
 	global $core;
 	$socket = $core->_client_sock[$key];
-	$target = $core->_clients[$key]['nick'];
+	$target = (empty($core->_clients[$key]['nick'])?"*":$core->_clients[$key]['nick']);
 	$prefix = ":".$core->servname." ".$numeric." ".$target." ";
 	switch($numeric){
 	case 409:
@@ -118,6 +146,9 @@ function error($numeric, $key, $extra=""){
 	case 412:
 	$message = $prefix.":No text to send.";
 	break;
+	case 421:
+	$message = $prefix.$extra." :Unknown command.";
+	break;
 	case 422:
 	$message = $prefix.":MOTD file missing.";
 	break;
@@ -127,6 +158,12 @@ function error($numeric, $key, $extra=""){
 	case 432:
 	$extra = explode(":",$extra);
 	$message = $prefix."$extra[0] :Erroneous nickname".($extra['1']?": ".$extra['1']:"");
+	break;
+	case 433:
+	$message = $prefix.$extra." :Nickname already in use.";
+	break;
+	case 451:
+	$message = $prefix.$extra." :You have not registered.";
 	break;
 	case '461':
 	$message = $prefix."$extra :Not enough parameters.";
@@ -145,7 +182,7 @@ function welcome($key){
 	$core->write($socket, ":{$core->servname} 002 {$cl['nick']} :Your host is {$core->servname} running {$core->version}");
 	$core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
 	$core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} <umodes> <chanmodes>");
-	$core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES=# PREFIX=(qaohv)~&@%+ :are supported by the server");
+	$core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ :are supported by this server");
 	$this->motd($key);
 }
 
@@ -168,6 +205,33 @@ function motd($key, $p=""){
 		} else {
 			$this->error('422', $key);
 		}
+	}
+}
+
+function nick($key, $p){
+	global $core;
+	$socket = $core->_client_sock[$key];
+	if(empty($p)){
+		$this->error('461', $key, 'NICK');
+		return;
+	}
+	$nicks = array();
+	foreach($core->_clients as $value){
+		$nicks[] = $value['nick'];
+	}
+	if(array_search($p, $nicks) !== FALSE){
+		$this->error('433', $key, $p);
+		return;
+	}
+	if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $p)){
+		$core->write($socket, ":{$core->_clients[$key]['prefix']} NICK $p");
+		$core->_clients[$key]['nick'] = $p;
+		$core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
+		//foreach($core->_clients[$key]['channels'] as $key => $value){
+		//	alert the channel's occupants
+		//}
+	} else {
+		$this->error('432', $key, $p.":"."Illegal characters.");
 	}
 }
 
@@ -207,6 +271,16 @@ function pong($key, $p){
 			$core->_clients[$key]['lastpong'] = time();
 		}
 	}
+}
+
+function quit($key, $p){
+	global $core;
+	$socket = $core->_client_sock[$key];
+	$core->write($socket, "ERROR: Closing Link: {$core->_clients[$key]['address']} ($p)");
+	$core->close($key);
+	//foreach($core->_clients[$key]['channels'] as $key => $value){
+        //      alert the channel's occupants
+        //}
 }
 
 function user($key, $p){

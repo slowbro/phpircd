@@ -67,7 +67,7 @@ while(true){
 					}
 				}
 			} else {
-				echo "Closing Link: client {$core->_clients[$key]['address']}: Client Exited\n";
+				echo "Closing Link: client {$core->_clients[$key]['prefix']}: Client Exited\n";
 				@socket_close($core->_client_sock[$key]);
 				unset($reads[$key]);
 	                        unset($core->_clients[$key]);
@@ -85,7 +85,7 @@ while(true){
 	foreach($core->_clients as $key => $value){
 		if((time() - $value['lastping']) > $core->config['ircd']['pingfreq']){
 			if(!$value['registered']){
-				$core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['address']." (Ping timeout)");
+				$core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['prefix']." (Ping timeout)");
 				$core->close($key);
 			} else {
 				if($value['lastping'] <= $value['lastpong']){
