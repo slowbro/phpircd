@@ -2,7 +2,7 @@
 
 class core {
 
-var $version = "phpircd v0.1a";
+var $version = "phpircd v0.1e";
 var $config;
 var $address;
 var $port;
@@ -12,6 +12,7 @@ var $_socket;
 var $sock_num;
 var $servname;
 var $network;
+var $_channels = array();
 
 function init($config){
 	$this->config = parse_ini_file($config, true);
@@ -22,7 +23,7 @@ function init($config){
 	$this->createdate = $this->config['me']['created'];
 	$this->_socket = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
 	if (!socket_set_option($this->_socket, SOL_SOCKET, SO_REUSEADDR, 1)) {
-	    echo socket_strerror(socket_last_error($this->_socket));
+	    echo socket_strerror(socket_last_error($this->_socket))."\n";
 	    exit;
 	} 
 	socket_bind($this->_socket,$this->address,$this->port) or die('Could not bind socket.');

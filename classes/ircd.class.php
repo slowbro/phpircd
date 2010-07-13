@@ -20,8 +20,8 @@ function newConnection($in, $key){
 		}
 		$err = FALSE;
 		while($err == FALSE){
-		if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $e['1'])){
-			$err = "{$e['1']}:Illegal characters.";
+		if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`_\{\}]{0,16}$/", $e['1'])){
+			$err = "{$e['1']}:Illegal characters. 1";
 			continue;
 		}
 		//if(modes n shit){
@@ -41,8 +41,8 @@ function newConnection($in, $key){
 				$rn = substr($rn, 1);
 			}
 		}
-		if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\} ]{0,19}$/", $rn)){
-			$err = "$rn:Illegal characters.";
+		if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`_\{\} ]{1}[a-zA-Z0-9\[\]\\\|\^\`_\{\} ]{0,19}$/", $rn)){
+			$err = "$rn:Illegal characters. 2";
 			continue;
 		}
 		break;
@@ -54,11 +54,13 @@ function newConnection($in, $key){
 			$core->_clients[$key]['username'] = $e['1'];
 			$core->_clients[$key]['usermode'] = "";
 			$core->_clients[$key]['realname'] = $rn;
-			$core->_clients[$key]['lastping'] = time();
+			$core->_clients[$key]['channels'] = array();
 			if($core->_clients[$key]['regbit'] ^ 1){
 				$core->_clients[$key]['regbit'] += 1;
 			}
 			if($core->_clients[$key]['regbit'] == 3){
+				$core->_clients[$key]['lastping'] = time();
+				$core->_clients[$key]['lastpong'] = $core->_clients[$key]['lastping'];
                                 $core->_clients[$key]['registered'] = TRUE;
 				$core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
 				$this->welcome($key);
@@ -77,12 +79,14 @@ function newConnection($in, $key){
 				$core->_clients[$key]['regbit'] +=2;
 			}
 			if($core->_clients[$key]['regbit'] == 3){
+				$core->_clients[$key]['lastping'] = time();
+				$core->_clients[$key]['lastpong'] = $core->_clients[$key]['lastping'];
 				$core->_clients[$key]['registered'] = TRUE;
 				$core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
 				$this->welcome($key);
 			}
 		} else {
-			$this->error('432', $key, $e['1'].":Illegal characters.");
+			$this->error('432', $key, $e['1'].":Illegal characters.3");
 		}
 		break;
 	}
@@ -90,7 +94,6 @@ function newConnection($in, $key){
 }
 
 function process($in, $key){
-	//example:COMMAND ?(:)prams
 	$e = explode(" ", $in);
 	$command = strtolower($e['0']);
 	unset($e['0']);
@@ -127,6 +130,9 @@ function error($numeric, $key, $extra=""){
 	break;
 	case '461':
 	$message = $prefix."$extra :Not enough parameters.";
+	break;
+	case '462':
+	$message = $prefix.":You may not register more than once.";
 	}
 	$core->write($socket, $message);
 }
@@ -139,7 +145,7 @@ function welcome($key){
 	$core->write($socket, ":{$core->servname} 002 {$cl['nick']} :Your host is {$core->servname} running {$core->version}");
 	$core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
 	$core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} <umodes> <chanmodes>");
-	$core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES=# PREFIX =(qaohv)~&@%+ :are supported by the server");
+	$core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES=# PREFIX=(qaohv)~&@%+ :are supported by the server");
 	$this->motd($key);
 }
 
@@ -156,17 +162,55 @@ function motd($key, $p=""){
 			$core->write($socket, ":{$core->servname} 375 {$cl['nick']} :- {$core->servname} Message of the day -");
 			$motd = file("motd.txt");
 			foreach($motd as $value){
-				$core->write($socket, ":{$core->servname} 372 {$cl['nick']} :- $value");
+				$core->write($socket, ":{$core->servname} 372 {$cl['nick']} :- ".rtrim($value));
 			}
 			$core->write($socket, ":{$core->servname} 376 {$cl['nick']} :End of MOTD");
 		} else {
-			$core->write($socket, ":{$core->servname} 422 {$cl['nick']} :MOTD file missing");
+			$this->error('422', $key);
+		}
+	}
+}
+
+function ping($key, $p, $e=false){
+	global $core;
+	$socket = $core->_client_sock[$key];
+	if($e){
+		$core->write($socket, "PING :$p");
+		return;
+	}
+	if(empty($p)){
+		$this->error('461', $key, 'PING');
+		return;
+	}
+	$p = explode(" ", $p);
+	if(count($p) == 1){
+		$p = $p['0'];
+		if(strpos($p, ":") === 0){
+                	$p = substr($p, 1);
+        	}
+		$core->write($socket, ":{$core->servname} PONG {$core->servname} ".":$p");
+		$core->_clients[$key]['lastpong'] = time();
+	} else {
+		//ping some server
+	}
+}
+
+function pong($key, $p){
+	global $core;
+        $socket = $core->_client_sock[$key];
+	//PONG :samecrap
+	if(strpos($p, ":") === 0){
+		$p = substr($p, 1);
+	}
+	if($p == $core->servname){ //respond to keepalive ping
+		if($core->_clients[$key]['lastpong'] < $core->_clients[$key]['lastping']){
+			$core->_clients[$key]['lastpong'] = time();
 		}
 	}
 }
 
 function user($key, $p){
-	echo "h";
+	$this->error('462', $key);
 }
 }
 

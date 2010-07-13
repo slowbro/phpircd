@@ -1,39 +1,51 @@
-phpircd v0.1e
+phpircd v0.2a
 this readme is a changelog lololol
 
 
 7/12/2010 -
-Sorta-finished welcome sequence. MOTD displays, if there is one (motd.txt), if not it throws ERR_NOMOTD.
-Working on NOTICE AUTH to make the welcome complete. Not implementing ident, for reasoning read here:
-http://web.archive.org/web/20050828200336/http://www.clock.org/~fair/opinion/identd.html
-More configuration options added to config.ini, not implemented yet.
-opers.ini added with example syntax, though also not implemented yet.
-fixed an error with the socket becoming unavailable for re-use if the program is inturrupted
-mid-communication with a client or shut down with clients still connected.
+* Sorta-finished welcome sequence. MOTD displays, if there is one (motd.txt), if not it throws ERR_NOMOTD.
+* Working on NOTICE AUTH to make the welcome complete. Not implementing ident, for reasoning read here:
+  http://web.archive.org/web/20050828200336/http://www.clock.org/~fair/opinion/identd.html
+* More configuration options added to config.ini, not implemented yet.
+* opers.ini added with example syntax, though also not implemented yet.
+* fixed an error with the socket becoming unavailable for re-use if the program is inturrupted
+  mid-communication with a client or shut down with clients still connected.
+(edit 1)
+* PING/PONG works now. Or at least the important parts (making sure the user still responds to PING).
+* Users can also now PING the server.
+* Pingfreq and pingout variables in the conf now utilized.
+* Fixed a bug where sending multiple commands in one message (i.e. NICK slowbro\r\nUSER h h h :Real Name)
+  would cause immense amounts of errors and headaches.
+* Fixed MOTD display to remove extra newlines.
+* Fixed post-registration USER command; it now throws ERR_ALREADYREGISTERED.
+* NOTICE AUTH functionality complete, and working 100%.
+* Fixed an bug causing external networks to not be able to remain connected to the server due to using
+  PHP_NORMAL_READ instead of PHP_BINARY_READ on the socket_read() function.
+* Version is now 0.2a
 
 7/11/2010 -
-Fixed security hole (already) in ircd.class.php that would allow clients to call functions they
-weren't supposed to such as newConnection().
-Fixed a performance issue with socket_select() and its if bracket.
+* Fixed security hole (already) in ircd.class.php that would allow clients to call functions they
+  weren't supposed to such as newConnection().
+* Fixed a performance issue with socket_select() and its if bracket.
 
 7/10/2010 -
-Error handling function introduced.
+* Error handling function introduced.
 (edit 1)
-Welcome message(s) progress. Need to figure out the 005 numeric which is now RPL_ISUPPORT, probably 
-going to just fill it with nonsense for now until the server is more complete and it is needed.
-More error checking added on initial connect, check for parameter amount, and checks params against
-some regex.
-Dicks everywhere.
+* Welcome message(s) progress. Need to figure out the 005 numeric which is now RPL_ISUPPORT, probably 
+  going to just fill it with nonsense for now until the server is more complete and it is needed.
+* More error checking added on initial connect, check for parameter amount, and checks params against
+  some regex.
+* Dicks everywhere.
 
 7/9/2010 -
-Basically a plain socket server at the moment.
+* Basically a plain socket server at the moment.
 (edit 1)
-Babysteps towards actual irc stuff. Closes link on ping timeout, working on initial connect sequence.
-Expect ircd.class.php rolled out within a day or so.
+* Babysteps towards actual irc stuff. Closes link on ping timeout, working on initial connect sequence.
+* Expect ircd.class.php rolled out within a day or so.
 (edit 2)
-Initial ircd class release.
-NICK error checking working for initial connect. USER next.
-Still need to legitimately NOTICE AUTH instead of just sending that junk.
+* Initial ircd class release.
+* NICK error checking working for initial connect. USER next.
+* Still need to legitimately NOTICE AUTH instead of just sending that junk.
 
 7/8/2010 -
-Initial alpha-absolutely-nothing-is-done-at-all release.
+* Initial alpha-absolutely-nothing-is-done-at-all release.
