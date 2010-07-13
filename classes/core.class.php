@@ -21,6 +21,10 @@ function init($config){
 	$this->network = $this->config['me']['network'];
 	$this->createdate = $this->config['me']['created'];
 	$this->_socket = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
+	if (!socket_set_option($this->_socket, SOL_SOCKET, SO_REUSEADDR, 1)) {
+	    echo socket_strerror(socket_last_error($this->_socket));
+	    exit;
+	} 
 	socket_bind($this->_socket,$this->address,$this->port) or die('Could not bind socket.');
 	socket_listen($this->_socket);
 	socket_set_nonblock($this->_socket);

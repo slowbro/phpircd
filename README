@@ -1,6 +1,15 @@
-phpircd v0.1a
+phpircd v0.1e
 this readme is a changelog lololol
 
+
+7/12/2010 -
+Sorta-finished welcome sequence. MOTD displays, if there is one (motd.txt), if not it throws ERR_NOMOTD.
+Working on NOTICE AUTH to make the welcome complete. Not implementing ident, for reasoning read here:
+http://web.archive.org/web/20050828200336/http://www.clock.org/~fair/opinion/identd.html
+More configuration options added to config.ini, not implemented yet.
+opers.ini added with example syntax, though also not implemented yet.
+fixed an error with the socket becoming unavailable for re-use if the program is inturrupted
+mid-communication with a client or shut down with clients still connected.
 
 7/11/2010 -
 Fixed security hole (already) in ircd.class.php that would allow clients to call functions they

@@ -139,9 +139,33 @@ function welcome($key){
 	$core->write($socket, ":{$core->servname} 002 {$cl['nick']} :Your host is {$core->servname} running {$core->version}");
 	$core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
 	$core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} <umodes> <chanmodes>");
+	$core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES=# PREFIX =(qaohv)~&@%+ :are supported by the server");
+	$this->motd($key);
 }
 
-function user($key, $pa){
+function lusers($key, $p=""){
+	
+}
+
+function motd($key, $p=""){
+	global $core;
+	$socket = $core->_client_sock[$key];
+	$cl = $core->_clients[$key];
+	if(empty($p)){
+		if(file_exists("motd.txt")){
+			$core->write($socket, ":{$core->servname} 375 {$cl['nick']} :- {$core->servname} Message of the day -");
+			$motd = file("motd.txt");
+			foreach($motd as $value){
+				$core->write($socket, ":{$core->servname} 372 {$cl['nick']} :- $value");
+			}
+			$core->write($socket, ":{$core->servname} 376 {$cl['nick']} :End of MOTD");
+		} else {
+			$core->write($socket, ":{$core->servname} 422 {$cl['nick']} :MOTD file missing");
+		}
+	}
+}
+
+function user($key, $p){
 	echo "h";
 }
 }
