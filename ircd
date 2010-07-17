@@ -8,97 +8,94 @@ $ircd = new ircd();
 $core->init('config.ini');
 echo "listening for new clients\n";
 while(true){
-	$un = NULL;
-	$reads = $core->_client_sock;
-	$reads[] = $core->_socket;
-	$writes = $reads;
-	if(socket_select($reads, $writes, $un, 0) > 0){
-	
-	while(in_array($core->_socket, $reads)){
-		if(count($core->_clients) > $core->config['ircd']['maxusers']){
-			$new = @socket_accept($core->_socket);
-			$core->write($new, "ERROR: Maximum clients reached. Please use a different server.");
-			$core->close($new, true);
-			continue;
-		}
-		$new = @socket_accept($core->_socket);
-		socket_set_nonblock($new);
-		$core->sock_num++;
-		$core->_client_sock[$core->sock_num] = $new;
-		socket_getpeername($new, $client['address']);
-		$client['lastping'] = time();
-		$client['lastpong'] = $client['lastping'];
-		$client['nick'] = NULL;
-		$client['registered'] = FALSE;
-		$client['regbit'] = 0;
-		$core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :*** Looking up your hostname...");
-		echo "new client: {$client['address']}\n";
-		$hn = gethostbyaddr($client['address']);
-		if($hn == $client['address']){
-			$core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :*** Can't resolve your hotsname, using your IP instead.");
-		} else {
-			$client['address'] = $hn;
-			$core->write($new, ":".$core->servname." NOTICE AUTH :*** Found your hostname.");
-		}
-		$core->_clients[$core->sock_num] = $client;
-		unset($reads[array_search($core->_socket, $reads)]);
-	}
+    $un = NULL;
+    $reads = $core->_client_sock;
+    $reads[] = $core->_socket;
+    $writes = $reads;
+    if(socket_select($reads, $writes, $un, 0) > 0){
+    
+    while(in_array($core->_socket, $reads)){
+        if(count($core->_clients) > $core->config['ircd']['maxusers']){
+            $new = @socket_accept($core->_socket);
+            $core->write($new, "ERROR: Maximum clients reached. Please use a different server.");
+            $core->close($new, true);
+            continue;
+        }
+        $new = @socket_accept($core->_socket);
+        socket_set_nonblock($new);
+        $core->sock_num++;
+        $core->_client_sock[$core->sock_num] = $new;
+        socket_getpeername($new, $client['address']);
+        $client['lastping'] = time();
+        $client['lastpong'] = $client['lastping'];
+        $client['nick'] = NULL;
+        $client['registered'] = FALSE;
+        $client['regbit'] = 0;
+        $core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :*** Looking up your hostname...");
+        echo "new client: {$client['address']}\n";
+        $hn = gethostbyaddr($client['address']);
+        if($hn == $client['address']){
+            $core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :*** Can't resolve your hotsname, using your IP instead.");
+        } else {
+            $client['address'] = $hn;
+            $core->write($new, ":".$core->servname." NOTICE AUTH :*** Found your hostname.");
+        }
+        $core->_clients[$core->sock_num] = $client;
+        unset($reads[array_search($core->_socket, $reads)]);
+    }
 
-	foreach($reads as $key => $value){
-		if(false !== ($buf = @socket_read($value, 1024, PHP_BINARY_READ))){
-			$data = trim($buf);
-			if(!empty($data)){
-				if(strpos($data, "\n") >= 0 || strpos($data, "\r") >= 0){
-					$data = str_replace("\r","\n", $data);
-					$exp = explode("\n", $data);
-					$data = array();
-					foreach($exp as $d){
-						$d = trim($d);
-						if(!empty($d)){
-							$data[] = $d;
-						}
-					}
-				}
-				foreach($data as $work){
-					if($core->_clients[$key]['registered'] == TRUE){
-						$ircd->process($work, $key);
-					} else {
-						$ircd->newConnection($work, $key);
-					}
-				}
-			} else {
-				echo "Closing Link: client {$core->_clients[$key]['prefix']}: Client Exited\n";
-				@socket_close($core->_client_sock[$key]);
-				unset($reads[$key]);
-	                        unset($core->_clients[$key]);
-        	                unset($core->_client_sock[$key]);
-			}
-		} else {
-			echo "Closing Link: client {$core->_clients[$key]['prefix']}: ".socket_strerror(socket_last_error($value))."\n";
-			unset($reads[$key]);
-			unset($core->_clients[$key]);
-			unset($core->_client_sock[$key]);
-		}
-	}
-	}//end if socket_select
-	//do this every iteration regarless of socket state
-	foreach($core->_clients as $key => $value){
-		if((time() - $value['lastping']) > $core->config['ircd']['pingfreq']){
-			if(!$value['registered']){
-				$core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['prefix']." (Ping timeout)");
-				$core->close($key);
-			} else {
-				if($value['lastping'] <= $value['lastpong']){
-					$ircd->ping($key, $core->servname, TRUE);
-					$core->_clients[$key]['lastping'] = time();
-				}
-			}
-		}
-		if(time() > ($value['lastpong'] + $core->config['ircd']['pingfreq'] + $core->config['ircd']['pingout'])){
-			$core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['address']." (Ping timeout)");
+    foreach($reads as $key => $value){
+        if(false !== ($buf = @socket_read($value, 1024, PHP_BINARY_READ))){
+            $data = trim($buf);
+            if(!empty($data)){
+                if(strpos($data, "\n") >= 0 || strpos($data, "\r") >= 0){
+                    $data = str_replace("\r","\n", $data);
+                    $exp = explode("\n", $data);
+                    $data = array();
+                    foreach($exp as $d){
+                        $d = trim($d);
+                        if(!empty($d)){
+                            $data[] = $d;
+                        }
+                    }
+                }
+                foreach($data as $work){
+                    if($core->_clients[$key]['registered'] == TRUE){
+                        $ircd->process($work, $key);
+                    } else {
+                        $ircd->newConnection($work, $key);
+                    }
+                }
+            } else {
+                echo "Closing Link: client {$core->_clients[$key]['prefix']}: Client Exited\n";
+                unset($reads[$key]);
+                $core->close($key);
+            }
+        } else {
+            echo "Closing Link: client {$core->_clients[$key]['prefix']}: ".socket_strerror(socket_last_error($value))."\n";
+            unset($reads[$key]);
+            $core->close($key);
+        }
+    }
+    }//end if socket_select
+    //do this every iteration regarless of socket state
+    foreach($core->_clients as $key => $value){
+        if((time() - $core->_clients[$key]['lastpong']) > $core->config['ircd']['pingfreq']){
+            if(!$value['registered']){
+                $core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['prefix']." (Ping timeout)");
+                $core->close($key);
+            } else {
+                if($core->_clients[$key]['lastping'] <= $core->_clients[$key]['lastpong']){
+                    $ircd->ping($key, $core->servname, TRUE);
+                    $core->_clients[$key]['lastping'] = time();
+                }
+            }
+        }
+        if(time() > ($core->_clients[$key]['lastpong'] + $core->config['ircd']['pingfreq'] + $core->config['ircd']['pingout'])){
+            $core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['address']." (Ping timeout)");
                         $core->close($key);
-		}
-	}
+        }
+    }
         usleep(700);
 }
 socket_close($this->_socket);

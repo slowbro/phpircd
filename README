@@ -2,6 +2,13 @@ phpircd v0.2b
 this readme is a changelog lololol
 
 
+7/17/2010 -
+* PRIVMSG works for inter-user communication on the same server only.
+* $core->_nicks array for keeping track of in-use nicks more efficiently.
+* More error codes added.
+* Fixed the PING timeout error for reals this time.
+* Typo fixes.
+
 7/13/2010 -
 * NICK command now works, minus sending it to channels, seeing as JOIN hasn't been made yet.
 * QUIT command also works, with the same current caveats of NICK.
