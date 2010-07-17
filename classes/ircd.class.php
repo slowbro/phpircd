@@ -121,8 +121,8 @@ function process($in, $key){
     $command = strtolower($e['0']);
     unset($e['0']);
     $params = implode (" ", $e);
+    $core->_clients[$key]['lastpong'] = time();
     if(method_exists(__CLASS__,$command) && array_search($command, $this->forbidden) === FALSE){
-        $core->_clients[$key]['lastpong'] = time();
         $this->$command($key, $params);
     } else {
         $this->error('421', $key, $command);
@@ -165,13 +165,13 @@ function error($numeric, $key, $extra=""){
     break;
     //410 doesn't exist
     case 411:
-    $message = ":No recipient given ($extra).";
+    $message = ":No recipient given.";
     break;
     case 412:
     $message = ":No text to send.";
     break;
     case 421:
-    $message = $extra." :Unknown command.";
+    $message = strtoupper($extra)." :Unknown command.";
     break;
     case 422:
     $message = ":MOTD file missing.";
@@ -190,7 +190,7 @@ function error($numeric, $key, $extra=""){
     $message = $extra." :You have not registered.";
     break;
     case '461':
-    $message = "$extra :Not enough parameters.";
+    $message = strtoupper($extra)." :Not enough parameters.";
     break;
     case '462':
     $message = ":You may not register more than once.";
@@ -349,7 +349,7 @@ function privmsg($key, $p){
     if($is_channel){
         //send to whole channel
     } else {
-        $core->write($sock, $core->_clients[$key]['prefix']." PRIVMSG ".$target." :$message");
+        $core->write($sock, ":".$core->_clients[$key]['prefix']." PRIVMSG ".$target." :$message");
     }
 }
 

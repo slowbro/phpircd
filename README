@@ -8,6 +8,10 @@ this readme is a changelog lololol
 * More error codes added.
 * Fixed the PING timeout error for reals this time.
 * Typo fixes.
+(edit 1)
+* Fixed missing leading colon on PRIVMSG commands.
+* Made last activity (lastpong) update on every command, valid or not.
+* Fixed asthetic error where command errors were not returned uppercase.
 
 7/13/2010 -
 * NICK command now works, minus sending it to channels, seeing as JOIN hasn't been made yet.
