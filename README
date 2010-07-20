@@ -2,6 +2,11 @@ phpircd v0.2b
 this readme is a changelog lololol
 
 
+7/20/2010 -
+* JOIN progress. Error checking, you can now `join' a channel, +k doesn't work yet, you can't chat on the
+  channel, no topic, no names etc.. but it's progress. 40+ hour work weeks have me a bit tied up so I'm
+  doing what I can with the time I have available.
+
 7/17/2010 -
 * PRIVMSG works for inter-user communication on the same server only.
 * $core->_nicks array for keeping track of in-use nicks more efficiently.

@@ -210,6 +210,37 @@ function welcome($key){
     $this->motd($key);
 }
 
+function join($key, $p=""){
+    global $core;
+    $joins = array();
+    if(empty($p)){
+        $this->error(461, $key, 'join');
+        return;
+    }
+    $ps = explode(" ", $p);
+    if(count($ps) > 1){ //we have channel keys
+        $chans = explode(",", $ps['0']);
+        $keys = explode(",", $ps['1']);
+        foreach($chans as $k => $v){
+            $joins[] = array($v, @$keys[$k]);
+        }
+    } else {
+        $chans = explode(",", $p);
+        foreach($chans as $k => $v){
+            $joins[] = array($v, '');
+        }
+    }
+    foreach($joins as $value){
+        $chan = $value['0'];
+        $kee = @$value['1'];
+        if(array_search($chan[0], str_split($core->config['ircd']['chantypes'])) === FALSE){
+            $this->error(403, $key, $chan);
+            continue;
+        }
+        $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} JOIN $chan");
+    }
+}
+
 function lusers($key, $p=""){
     
 }
