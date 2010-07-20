@@ -145,8 +145,7 @@ function error($numeric, $key, $extra=""){
     $message = "$extra :No such channel.";
     break;
     case 404:
-    $e = explode(":", $extra);
-    $message = $e['0']." :".$e['1'];
+    $message = $extra." :Can not send to channel.";
     break;
     case 405:
     $message = "$extra :You have joined too many channels.";
@@ -185,6 +184,9 @@ function error($numeric, $key, $extra=""){
     break;
     case 433:
     $message = $extra." :Nickname already in use.";
+    break;
+    case 442:
+    $message = $extra." :You're not in that channel.";
     break;
     case 451:
     $message = $extra." :You have not registered.";
@@ -237,7 +239,27 @@ function join($key, $p=""){
             $this->error(403, $key, $chan);
             continue;
         }
-        $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} JOIN $chan");
+        if(array_key_exists($chan, $core->_channels) === FALSE){
+            $tpl = array();
+            $tpl['users'] = array($key => "@@".$core->_clients[$key]['nick']);
+            $tpl['modes'] = NULL;
+            $tpl['bans'] = array();
+            $tpl['excepts'] = array();
+            $tpl['invex'] = array();
+            $tpl['topic'] = array("message" => NULL, "changed" => NULL, "nick" => NULL);
+            $core->_channels[$chan] = $tpl;
+            $core->_clients[$key]['channels'][] = $chan;
+            $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} JOIN $chan");
+        } else {
+            $core->_channels[$chan]['users'][$key] = $core->_clients[$key]['nick'];
+            $core->_clients[$key]['channels'][] = $chan;
+            $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} JOIN $chan");
+            if(!empty($core->_channels[$chan]['topic']['message'])){
+                $this->topic($key, $chan);
+            }
+        }
+        print_r($core->_channels);
+        print_r($core->_clients[$key]);
     }
 }
 
@@ -352,18 +374,23 @@ function privmsg($key, $p){
         }
     }
     $is_channel = FALSE;
-    if(array_search($target[0], $chantypes) === TRUE){
+    if(array_search($target[0], $chantypes) !== FALSE){
         $is_channel = TRUE;
     }
     if($is_channel){
-        if(!preg_match("/[\x01-\x07\x08-\x09\x0B-\x0C\x0E-\x1F\x21-\x2B\x2D-\x39\x3B-\xFF]/", substr($target, 1))){
+        if(!preg_match("/[\x01-\x07\x08-\x09\x0B-\x0C\x0E-\x1F\x21-\x2B\x2D-\x39\x3B-\xFF]{1,}/", $target)){
             //ERR_NOSUCHNICK (illegal characters)
             $this->error(401, $key, $target);
             return;
         }
-        if(array_search($target, $this->channels) === FALSE){
+        if(array_key_exists($target, $core->_channels) === FALSE){
             //ERR_NOSUCHNICK (channel doesnt exist)
             $this->error(401, $key, $target);
+            return;
+        }
+        if(array_search($target, $core->_clients[$key]['channels']) === FALSE){
+            //ERR_CANNOTSENDATOCHAN
+            $this->error(404, $key, $target);
             return;
         }
     } else {
@@ -379,6 +406,13 @@ function privmsg($key, $p){
     $message = ($message[0] == ":"?substr($message, 1):$message);
     if($is_channel){
         //send to whole channel
+        foreach($core->_channels[$target]['users'] as $k => $v){
+            if($k == $key){
+                continue;
+            }
+            $cl = $core->_clients[$k];
+            $core->write($core->_client_sock[$k], ":{$core->_clients[$key]['prefix']} PRIVMSG $target :$message");
+        }
     } else {
         $core->write($sock, ":".$core->_clients[$key]['prefix']." PRIVMSG ".$target." :$message");
     }
@@ -394,9 +428,45 @@ function quit($key, $p){
         //}
 }
 
+function topic($key, $p){
+    global $core;
+    $socket = $core->_client_sock[$key];
+    if(empty($p)){
+        $this->error(461, $key, 'topic');
+        return;
+    }
+    $p = explode(" ", $p);
+    if(array_key_exists($p['0'], $core->_channels) === FALSE){
+        $this->error(403, $key, $p['0']);
+        return;
+    }
+    if(array_search($p['0'], $core->_clients[$key]['channels']) === FALSE){
+        $this->error(442, $key, $p['0']);
+        return;
+    }
+    if(count($p) == 1){
+        $chan = $p['0'];
+        $topic = $core->_channels[$chan]['topic'];
+        if(empty($topic['message'])){
+            $core->write($socket, ":{$core->servname} 331 $chan :No topic set.");
+            return;
+        }
+        $core->write($socket, ":{$core->servname} 332 $chan :{$topic['message']}");
+        $core->write($socket, ":{$core->servname} 333 $chan {$topic['name']} {$topic['changed']}");
+    } else {
+        //change topic
+        
+    }
+}
+
 function user($key, $p){
     $this->error('462', $key);
 }
+
+function who($key, $p){
+    
 }
+
+}// end class
 
 ?>

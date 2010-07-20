@@ -6,7 +6,7 @@ require("classes/ircd.class.php");
 $core = new core();
 $ircd = new ircd();
 $core->init('config.ini');
-echo "listening for new clients\n";
+$core->debug("listening for new clients");
 while(true){
     $un = NULL;
     $reads = $core->_client_sock;
@@ -25,16 +25,17 @@ while(true){
         socket_set_nonblock($new);
         $core->sock_num++;
         $core->_client_sock[$core->sock_num] = $new;
-        socket_getpeername($new, $client['address']);
+        socket_getpeername($new, $client['ip']);
         $client['lastping'] = time();
         $client['lastpong'] = $client['lastping'];
         $client['nick'] = NULL;
         $client['registered'] = FALSE;
         $client['regbit'] = 0;
         $core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :*** Looking up your hostname...");
-        echo "new client: {$client['address']}\n";
-        $hn = gethostbyaddr($client['address']);
-        if($hn == $client['address']){
+        $core->debug("new client: {$client['address']}");
+        $hn = gethostbyaddr($client['ip']);
+        if($hn == $client['ip']){
+            $client['address'] = $client['ip'];
             $core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :*** Can't resolve your hotsname, using your IP instead.");
         } else {
             $client['address'] = $hn;
@@ -67,12 +68,12 @@ while(true){
                     }
                 }
             } else {
-                echo "Closing Link: client {$core->_clients[$key]['prefix']}: Client Exited\n";
+                $core->debug("Closing Link: client {$core->_clients[$key]['prefix']}: Client Exited");
                 unset($reads[$key]);
                 $core->close($key);
             }
         } else {
-            echo "Closing Link: client {$core->_clients[$key]['prefix']}: ".socket_strerror(socket_last_error($value))."\n";
+            $core->debug("Closing Link: client {$core->_clients[$key]['prefix']}: ".socket_strerror(socket_last_error($value)));
             unset($reads[$key]);
             $core->close($key);
         }
@@ -83,6 +84,7 @@ while(true){
         if((time() - $core->_clients[$key]['lastpong']) > $core->config['ircd']['pingfreq']){
             if(!$value['registered']){
                 $core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['prefix']." (Ping timeout)");
+                $core->debug("Closing Link: client {$value['prefix']} (Ping Timeout)");
                 $core->close($key);
             } else {
                 if($core->_clients[$key]['lastping'] <= $core->_clients[$key]['lastpong']){
@@ -92,7 +94,8 @@ while(true){
             }
         }
         if(time() > ($core->_clients[$key]['lastpong'] + $core->config['ircd']['pingfreq'] + $core->config['ircd']['pingout'])){
-            $core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['address']." (Ping timeout)");
+            $core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['prefix']." (Ping timeout)");
+            $core->debug("Closing Link: client {$value['address']} (Ping Timeout)");
                         $core->close($key);
         }
     }

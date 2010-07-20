@@ -6,6 +6,12 @@ this readme is a changelog lololol
 * JOIN progress. Error checking, you can now `join' a channel, +k doesn't work yet, you can't chat on the
   channel, no topic, no names etc.. but it's progress. 40+ hour work weeks have me a bit tied up so I'm
   doing what I can with the time I have available.
+(edit 1)
+* Added client field for ip address.
+* JOIN now creates the channel in $core->_channels if it doesn't exist.
+* TOPIC added, minus support for chaning the topic (so far).
+* PRIVMSG now supports sending messages to channels (YAY). Bug needs to be fixed: users remain in the
+  channel array when disconnected, casuing errors galore.
 
 7/17/2010 -
 * PRIVMSG works for inter-user communication on the same server only.

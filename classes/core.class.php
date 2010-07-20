@@ -48,5 +48,10 @@ function close($key, $sock=false){
     }
 }
 
+function debug($msg){
+    if($this->config['core']['debug'] == true)
+        echo $msg . "\n";
+}
+
 }
 ?>
