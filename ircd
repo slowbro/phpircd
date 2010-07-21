@@ -32,7 +32,7 @@ while(true){
         $client['registered'] = FALSE;
         $client['regbit'] = 0;
         $core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :*** Looking up your hostname...");
-        $core->debug("new client: {$client['address']}");
+        $core->debug("new client: {$client['ip']}");
         $hn = gethostbyaddr($client['ip']);
         if($hn == $client['ip']){
             $client['address'] = $client['ip'];
@@ -68,7 +68,7 @@ while(true){
                     }
                 }
             } else {
-                $core->debug("Closing Link: client {$core->_clients[$key]['prefix']}: Client Exited");
+                $core->debug("Closing Link: client ".(empty($core->_clients[$key]['prefix'])?$core->_clients[$key]['address']:$core->_clients[$key]['prefix']).": Client Exited");
                 unset($reads[$key]);
                 $core->close($key);
             }

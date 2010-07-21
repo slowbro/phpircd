@@ -33,7 +33,7 @@ function init($config){
 }
 
 function write($sock, $data){
-    $data = $data."\r\n";
+    $data = substr($data, 0, 510)."\r\n";
     socket_write($sock, $data, strlen($data));
 }
 

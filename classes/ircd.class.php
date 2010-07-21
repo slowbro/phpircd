@@ -35,7 +35,7 @@ function newConnection($in, $key){
         }
         $err = FALSE;
         while($err == FALSE){
-        if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`_\{\}]{0,16}$/", $e['1'])){
+        if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`_\{\}]{0,}$/", $e['1'])){
             $err = "{$e['1']}:Illegal characters.";
             continue;
         }
@@ -66,10 +66,11 @@ function newConnection($in, $key){
             $this->error('432', $key,"$err");
         } else {
             unset($e['3']); //unused
-            $core->_clients[$key]['username'] = $e['1'];
+            $core->_clients[$key]['username'] = substr($e['1'], 0, 16);
             $core->_clients[$key]['usermode'] = "";
             $core->_clients[$key]['realname'] = $rn;
             $core->_clients[$key]['channels'] = array();
+            $core->_clients[$key]['namesx'] = FALSE;
             if($core->_clients[$key]['regbit'] ^ 1){
                 $core->_clients[$key]['regbit'] += 1;
             }
@@ -92,8 +93,8 @@ function newConnection($in, $key){
             $this->error('433', $key, $e['1']);
             break;
         }
-        if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $e['1'])){
-            $core->_clients[$key]['nick'] =$e['1'];
+        if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,}$/", $e['1'])){
+            $core->_clients[$key]['nick'] = substr($e['1'], 0, $core->config['ircd']['nicklen']);
             $core->_nicks[$key] = strtolower($e['1']);
             if($core->_clients[$key]['regbit'] ^ 2){
                 $core->_clients[$key]['regbit'] +=2;
@@ -208,7 +209,7 @@ function welcome($key){
     $core->write($socket, ":{$core->servname} 002 {$cl['nick']} :Your host is {$core->servname} running {$core->version}");
     $core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
     $core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} <umodes> <chanmodes>");
-    $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ :are supported by this server");
+    $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NAMESX :are supported by this server");
     $this->motd($key);
 }
 
@@ -258,8 +259,6 @@ function join($key, $p=""){
                 $this->topic($key, $chan);
             }
         }
-        print_r($core->_channels);
-        print_r($core->_clients[$key]);
     }
 }
 
@@ -285,6 +284,67 @@ function motd($key, $p=""){
     }
 }
 
+function names($key, $p){
+    global $core;
+    $socket = $core->_client_sock[$key];
+    $cl = $core->_clients[$key];
+    $prefix = ":{$core->servname} 353 {$cl['nick']} ";
+    if(empty($p)){
+        foreach($core->_clients as $val){
+            if(count($val['channels']) == "0"){
+                $names[] = $val['nick'];
+            }
+        }
+        $prefix .= "= * :";
+    } else {
+        $p = explode(" ", $p);
+        if(array_key_exists($p['0'], $core->_channels) === FALSE){
+            $core->write($socket, ":{$core->servname} 366 {$cl['nick']} {$p['0']} :End of /NAMES list.");
+            return;
+        }
+        $chan = $p['0'];
+        $names = $core->_channels[$chan]['users'];
+        foreach($names as $k => $v){
+            if(strpos($v, "@@") !== FALSE){
+                $names[$k] = str_replace("@@", "@", $v);
+            }
+        }
+        if(!$cl['namesx']){
+        
+        }
+        if(array_search("p",str_split($core->_channels[$chan]['modes'])) !== FALSE){
+            $prefix .= "* $chan :";
+        } elseif(array_search("s",str_split($core->_channels[$chan]['modes'])) !== FALSE){
+            $prefix .= "@ $chan :";
+        } else {
+            $prefix .= "= $chan :";
+        }
+    }
+    if(count(@$names) == 0){
+        $core->write($socket, ":{$core->servname} 366 {$cl['nick']} * :End of /NAMES list.");
+        return;
+    }
+    $names = implode(" ", $names);
+    $len = strlen($prefix);
+    if($len+strlen($names) <= 510){
+        $core->write($socket, $prefix.$names);
+    } else {
+        $max = 510 - $len;
+        while(strlen($names) > 510){
+        $nsub = substr($names, 0, $max-1);
+        if($names[strlen($nsub)-1] != " " || !empty($names[strlen($nsub)-1])){
+            $pos = strrpos($nsub, " ");
+            $nsub = substr($nsub, 0, $pos);
+        }
+        $names = substr($names, strlen($nsub)+1);
+        $core->write($socket, $prefix.$nsub);
+        }
+        $core->write($socket, $prefix.$names);
+    }
+    $core->write($socket, ":{$core->servname} 366 {$cl['nick']} ".(empty($chan)?"*":$chan)." :End of /NAMES list.");
+    return;
+}
+
 function nick($key, $p){
     global $core;
     $socket = $core->_client_sock[$key];
@@ -296,7 +356,8 @@ function nick($key, $p){
         $this->error('433', $key, $p);
         return;
     }
-    if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,16}$/", $p)){
+    if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,}$/", $p)){
+        $p = substr($p, 0, $core->config['ircd']['nicklen']);
         $core->write($socket, ":{$core->_clients[$key]['prefix']} NICK $p");
         $core->_clients[$key]['nick'] = $p;
         $core->_nicks[$key] = strtolower($p);
@@ -418,14 +479,25 @@ function privmsg($key, $p){
     }
 }
 
+function protoctl($key, $p){
+    global $core;
+    if(empty($p)){
+        $this->error(461, $key, 'protoctl');
+        return;
+    }
+    if(strtolower($p) == "namesx"){
+        $core->_clients[$key]['namesx'] = TRUE;
+    }
+}
+
 function quit($key, $p){
     global $core;
     $socket = $core->_client_sock[$key];
     $core->write($socket, "ERROR: Closing Link: {$core->_clients[$key]['address']} ($p)");
     $core->close($key);
     //foreach($core->_clients[$key]['channels'] as $key => $value){
-        //      alert the channel's occupants
-        //}
+        //alert the channel's occupants
+    //}
 }
 
 function topic($key, $p){

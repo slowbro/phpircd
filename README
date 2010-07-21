@@ -12,6 +12,11 @@ this readme is a changelog lololol
 * TOPIC added, minus support for chaning the topic (so far).
 * PRIVMSG now supports sending messages to channels (YAY). Bug needs to be fixed: users remain in the
   channel array when disconnected, casuing errors galore.
+(edit 2)
+* Fixed issue with NICK where users were told their nick was erroneous if it was too long (instead of just
+  shortening it for them).
+* NAMES support added. Splits messages that are >510 characters.
+* $core->write() automatically turncates strings at 512 characters (including \r\n) per rfc requirements.
 
 7/17/2010 -
 * PRIVMSG works for inter-user communication on the same server only.
