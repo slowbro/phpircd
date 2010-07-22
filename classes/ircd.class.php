@@ -209,7 +209,8 @@ function welcome($key){
     $core->write($socket, ":{$core->servname} 002 {$cl['nick']} :Your host is {$core->servname} running {$core->version}");
     $core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
     $core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} <umodes> <chanmodes>");
-    $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NAMESX :are supported by this server");
+    $_005 = "";
+    $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$core->config['me']['network']}NAMESX :are supported by this server");
     $this->motd($key);
 }
 

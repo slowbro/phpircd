@@ -2,7 +2,7 @@
 
 class core {
 
-var $version = "phpircd v0.3a";
+var $version = "phpircd0.3a";
 var $config;
 var $address;
 var $port;
