@@ -210,7 +210,7 @@ function welcome($key){
     $core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
     $core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} <umodes> <chanmodes>");
     $_005 = "";
-    $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$core->config['me']['network']}NAMESX :are supported by this server");
+    $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$core->config['me']['network']} NAMESX :are supported by this server");
     $this->motd($key);
 }
 
@@ -363,9 +363,13 @@ function nick($key, $p){
         $core->_clients[$key]['nick'] = $p;
         $core->_nicks[$key] = strtolower($p);
         $core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
-        //foreach($core->_clients[$key]['channels'] as $key => $value){
-        //  alert the channel's occupants
-        //}
+        foreach($core->_clients[$key]['channels'] as $chan){
+            foreach($core->_channels[$chan]['users'] as $ckey => $cnick){
+                if($key != $ckey){
+                    $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} NICK $p");
+                }
+            } 
+        }
     } else {
         $this->error('432', $key, $p.":"."Illegal characters.");
     }
