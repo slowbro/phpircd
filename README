@@ -2,6 +2,13 @@ phpircd v0.3a
 this readme is a changelog lololol
 update 1/11/11 - not dead, just busy
 
+4/18/2011 -
+* Bored in Java class
+* Fixed some weird spacing
+* Added die() for config parse failure
+* Fixed core::write(): was turncating at 513, not 512, characters. Derp.
+* Hopefully I can make some headway on this soon
+
 7/20/2010 -
 * JOIN progress. Error checking, you can now `join' a channel, +k doesn't work yet, you can't chat on the
   channel, no topic, no names etc.. but it's progress. 40+ hour work weeks have me a bit tied up so I'm

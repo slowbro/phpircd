@@ -96,7 +96,7 @@ while(true){
         if(time() > ($core->_clients[$key]['lastpong'] + $core->config['ircd']['pingfreq'] + $core->config['ircd']['pingout'])){
             $core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['prefix']." (Ping timeout)");
             $core->debug("Closing Link: client {$value['address']} (Ping Timeout)");
-                        $core->close($key);
+            $core->close($key);
         }
     }
         usleep(700);

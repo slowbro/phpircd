@@ -16,7 +16,9 @@ var $_channels = array();
 var $_nicks = array();
 
 function init($config){
-    $this->config = parse_ini_file($config, true);
+    $this->config = @parse_ini_file($config, true);
+    if(!$this->config)
+        die("Config file parse failed: check your syntax!");
     $this->address = $this->config['core']['address'];
     $this->port = $this->config['core']['port'];
     $this->servname = $this->config['me']['servername'];
@@ -33,13 +35,13 @@ function init($config){
 }
 
 function write($sock, $data){
-    $data = substr($data, 0, 510)."\r\n";
+    $data = substr($data, 0, 509)."\r\n";
     socket_write($sock, $data, strlen($data));
 }
 
 function close($key, $sock=false){
-        if($sock){
-                socket_close($key);
+    if($sock){
+        socket_close($key);
     } else {
         @socket_close($this->_client_sock[$key]);
         unset($this->_clients[$key]);
