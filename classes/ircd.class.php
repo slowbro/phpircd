@@ -3,7 +3,7 @@
 class ircd {
 
 var $forbidden = array("newConnecntion", "process", "welcome", "error", "debug");
-var $nickRegex = "/^[^0-9]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,}$/";
+var $nickRegex = "/^[a-zA-Z\[\]\\\|^`_{}]{1}[a-zA-Z0-9\[\]\\|^`_{}]{0,}$/";
 
 function newConnection($in, $key){
     global $core;
@@ -94,7 +94,7 @@ function newConnection($in, $key){
             $this->error('433', $key, $e['1']);
             break;
         }
-        if($this->checkNick($e['1'])){
+        if($this->checkNick(@$e['1'])){
             $core->_clients[$key]['nick'] = substr($e['1'], 0, $core->config['ircd']['nicklen']);
             $core->_nicks[$key] = strtolower($e['1']);
             if($core->_clients[$key]['regbit'] ^ 2){
