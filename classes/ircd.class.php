@@ -3,6 +3,7 @@
 class ircd {
 
 var $forbidden = array("newConnecntion", "process", "welcome", "error", "debug");
+var $nickRegex = "/^[^0-9]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,}$/";
 
 function newConnection($in, $key){
     global $core;
@@ -35,38 +36,38 @@ function newConnection($in, $key){
         }
         $err = FALSE;
         while($err == FALSE){
-        if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`_\{\}]{0,}$/", $e['1'])){
-            $err = "{$e['1']}:Illegal characters.";
-            continue;
-        }
-        //if(modes n shit){
-            
-        //}
-        if(count($e) == 5){
-            $rn = $e['4'];
-            if($rn[0] == ":"){
-                                $rn = substr($rn, 1);
-                        }
-        } else {
-            for($i=4;$i < count($e);$i++){
-                $rn[] = $e[$i];
+            if(!$this->checkNick($e['1'])){
+                $err = "{$e['1']}:Illegal characters.";
+                continue;
             }
-            $rn = implode(" ", $rn);
-            if($rn[0] == ":"){
-                $rn = substr($rn, 1);
+            //if(modes n shit){
+                
+            //}
+            if(count($e) == 5){
+                $rn = $e['4'];
+                if($rn[0] == ":"){
+                    $rn = substr($rn, 1);
+                }
+            } else {
+                for($i=4;$i < count($e);$i++){
+                    $rn[] = $e[$i];
+                }
+                $rn = implode(" ", $rn);
+                if($rn[0] == ":"){
+                    $rn = substr($rn, 1);
+                }
             }
-        }
-        if(!preg_match("/^[a-zA-Z\[\]\\\|\^\`_\{\} ]{1}[a-zA-Z0-9\[\]\\\|\^\`_\{\} ]{0,19}$/", $rn)){
-            $err = "$rn:Illegal characters.";
-            continue;
-        }
-        break;
+            if(!$this->checkNick($rn)){
+                $err = "$rn:Illegal characters.";
+                continue;
+            }
+            break;
         }
         if($err){
             $this->error('432', $key,"$err");
         } else {
             unset($e['3']); //unused
-            $core->_clients[$key]['username'] = substr($e['1'], 0, 16);
+            $core->_clients[$key]['username'] = $e['1'];
             $core->_clients[$key]['usermode'] = "";
             $core->_clients[$key]['realname'] = $rn;
             $core->_clients[$key]['channels'] = array();
@@ -93,7 +94,7 @@ function newConnection($in, $key){
             $this->error('433', $key, $e['1']);
             break;
         }
-        if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,}$/", $e['1'])){
+        if($this->checkNick($e['1'])){
             $core->_clients[$key]['nick'] = substr($e['1'], 0, $core->config['ircd']['nicklen']);
             $core->_nicks[$key] = strtolower($e['1']);
             if($core->_clients[$key]['regbit'] ^ 2){
@@ -357,7 +358,7 @@ function nick($key, $p){
         $this->error('433', $key, $p);
         return;
     }
-    if(preg_match("/^[a-zA-Z\[\]\\\|\^\`\_\{\}]{1}[a-zA-Z0-9\[\]\\\|\^\`\_\{\}]{0,}$/", $p)){
+    if($this->checkNick($p)){
         $p = substr($p, 0, $core->config['ircd']['nicklen']);
         $core->write($socket, ":{$core->_clients[$key]['prefix']} NICK $p");
         $core->_clients[$key]['nick'] = $p;
@@ -542,6 +543,18 @@ function user($key, $p){
 
 function who($key, $p){
     
+}
+
+//utility methods
+
+function checkNick(&$nick){
+    global $core;
+    if(empty($nick))
+        return false;
+    if(!preg_match($this->nickRegex, $nick))
+        return false;
+    $nick = substr($nick, 0, $core->config['ircd']['nicklen']);
+    return true;
 }
 
 }// end class

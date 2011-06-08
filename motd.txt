@@ -9,4 +9,4 @@ Rules:
 
     * Do good stuff     * Don't do bad stuff
 
-    * Chat Hard     * Praise all opers
+    * Chat Hard         * Praise all opers
