@@ -265,7 +265,19 @@ function join($key, $p=""){
 }
 
 function lusers($key, $p=""){
-    
+    global $core;
+    $nick = $core->_clients[$key]['nick'];
+    $lusers = <<<EOM
+:{$core->servname} 251 $nick :There are 2 users and 0 invisible on 1 servers
+:{$core->servname} 252 $nick 0 :operator(s) online
+:{$core->servname} 254 $nick 1 :channels formed
+:{$core->servname} 255 $nick :I have 2 clients and 1 servers
+:{$core->servname} 265 $nick :Current Local Users: 11  Max: 79
+:{$core->servname} 266 $nick :Current Global Users: 113  Max: 130469
+EOM;
+    foreach(explode("\n", trim($lusers)) as $s){
+        $core->write($core->_client_sock[$key], trim($s));
+    }
 }
 
 function motd($key, $p=""){
@@ -391,8 +403,8 @@ function ping($key, $p, $e=false){
     if(count($p) == 1){
         $p = $p['0'];
         if(strpos($p, ":") === 0){
-                    $p = substr($p, 1);
-            }
+            $p = substr($p, 1);
+        }
         $core->write($socket, ":{$core->servname} PONG {$core->servname} ".":$p");
         $core->_clients[$key]['lastpong'] = time();
     } else {
@@ -402,7 +414,7 @@ function ping($key, $p, $e=false){
 
 function pong($key, $p){
     global $core;
-        $socket = $core->_client_sock[$key];
+    $socket = $core->_client_sock[$key];
     //PONG :samecrap
     if(strpos($p, ":") === 0){
         $p = substr($p, 1);
