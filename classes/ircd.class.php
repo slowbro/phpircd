@@ -256,7 +256,8 @@ function join($key, $p=""){
         } else {
             $core->_channels[$chan]['users'][$key] = $core->_clients[$key]['nick'];
             $core->_clients[$key]['channels'][] = $chan;
-            $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} JOIN $chan");
+            foreach($core->_channels[$chan]['users'] as $k=>$u)
+                $core->write($core->_client_sock[$k], ":{$core->_clients[$key]['prefix']} JOIN $chan");
             if(!empty($core->_channels[$chan]['topic']['message'])){
                 $this->topic($key, $chan);
             }

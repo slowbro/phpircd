@@ -8,30 +8,36 @@ var $address;
 var $port;
 var $_clients = array();
 var $_client_sock = array();
-var $_socket;
-var $sock_num;
+var $_sockets = array();
+var $sock_num = 0;
 var $servname;
 var $network;
 var $_channels = array();
 var $_nicks = array();
 
 function init($config){
-    $this->config = @parse_ini_file($config, true);
+    $this->config = parse_ini_file($config, true);
     if(!$this->config)
         die("Config file parse failed: check your syntax!");
-    $this->address = $this->config['core']['address'];
-    $this->port = $this->config['core']['port'];
+    $listens = explode(',', $this->config['core']['listen']);
+//    $this->address = $this->config['core']['address'];
+//    $this->port = $this->config['core']['port'];
     $this->servname = $this->config['me']['servername'];
     $this->network = $this->config['me']['network'];
     $this->createdate = $this->config['me']['created'];
-    $this->_socket = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
-    if (!socket_set_option($this->_socket, SOL_SOCKET, SO_REUSEADDR, 1)) {
-        echo socket_strerror(socket_last_error($this->_socket))."\n";
-        exit;
-    } 
-    @socket_bind($this->_socket,$this->address,$this->port) or die("Could not bind socket: ".socket_strerror(socket_last_error($this->_socket))."\n");
-    socket_listen($this->_socket);
-    socket_set_nonblock($this->_socket);
+    foreach($listens as $l){
+        $this->debug("bind to address $l");
+        $a = explode(":", trim($l));
+        $s = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
+        $this->_sockets[] = $s;
+        if (!socket_set_option($s, SOL_SOCKET, SO_REUSEADDR, 1)) {
+            echo socket_strerror(socket_last_error($si))."\n";
+            exit;
+        } 
+        @socket_bind($s,$a['0'],$a['1']) or die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
+        socket_listen($s);
+        socket_set_nonblock($s);
+    }
 }
 
 function write($sock, $data){
