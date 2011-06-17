@@ -40,6 +40,13 @@ function init($config){
     }
 }
 
+function read($sock){
+    $buf = @socket_read($sock, 1024, PHP_BINARY_READ);
+    if($buf)
+        $this->debug(trim($buf));
+    return $buf;
+}
+
 function write($sock, $data){
     $data = substr($data, 0, 509)."\r\n";
     socket_write($sock, $data, strlen($data));

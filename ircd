@@ -50,7 +50,7 @@ while(true){
     $reads = $writes = $core->_client_sock;
     if(@socket_select($reads, $writes, $un, 0) > 0){
       foreach($reads as $key => $value){
-        if(false !== ($buf = @socket_read($value, 1024, PHP_BINARY_READ))){
+        if(false !== ($buf = $core->read($value))){
             $data = trim($buf);
             if(!empty($data)){
                 if(strpos($data, "\n") >= 0 || strpos($data, "\r") >= 0){
@@ -83,7 +83,7 @@ while(true){
         }
     }//end while
     }//end if socket_select
-    //do this every iteration regarless of socket state
+    //do this every iteration regardless of socket state
     foreach($core->_clients as $key => $value){
         if((time() - $core->_clients[$key]['lastpong']) > $core->config['ircd']['pingfreq']){
             if(!$value['registered']){
