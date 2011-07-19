@@ -542,7 +542,7 @@ function quit($key, $p="Leaving"){
     global $core;
     $socket = $core->_client_sock[$key];
     $core->write($socket, "ERROR: Closing Link: {$core->_clients[$key]['address']} ($p)");
-    foreach($core->_clients[$key]['channels'] as $chan){
+    foreach(@$core->_clients[$key]['channels'] as $chan){
         //alert the channel's occupants
         foreach($core->_channels[$chan]['users'] as $ck => $cu){
             $core->write($core->_client_sock[$ck], ":{$core->_clients[$key]['prefix']} QUIT Quit: Leaving");

@@ -7,6 +7,10 @@ this readme is a changelog lololol
 * TOPIC now properly announces.
 * NAMES fixed again.
 * More later!
+(edit 1)
+* Added fix for ipv6-enabled boxes with ipv4 addresses (adds ::ffff:).
+* Changed config.ini to all double-qoutes, as the single quotes broke everything on some boxes.
+* Changed core::close() to ircd::quit() when server full.
 
 7/18/2011 - 
 * Thanks for all the help from #Frantech: cedr, InsDel, Corbin, and others!

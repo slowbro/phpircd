@@ -19,7 +19,7 @@ while(true){
         if(count($core->_clients) >= $core->config['ircd']['maxusers']){
             $new = @socket_accept($socket);
             $core->write($new, "ERROR: Maximum clients reached. Please use a different server.");
-            $core->close($new, true);
+            $ircd->quit($new,'Error: Server Full');
             continue;
         }
         $new = @socket_accept($socket);
