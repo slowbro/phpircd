@@ -1,6 +1,15 @@
 phpircd v0.3a
 this readme is a changelog lololol
-update 1/11/11 - not dead, just busy
+
+7/18/2011 - 
+* Thanks for all the help from #Frantech: cedr, InsDel, Corbin, and others!
+* NAMES now announces on join and tracks nick changes properly
+* Fixed part of TOPIC having a wrong variable name, however TOPIC is still broken.
+* PART now announces, and passes through custom PART mesages
+* Some work on QUIT, however it's still hopelessly broken as well.
+* NICK now announces properly to the whole channel, instead of announcing to you once for everyone in the channel (oops).
+* NICK now ignores you when "changing" your nick to what it already is.
+* Removed NAMESX from message 005 since we don't actually support it, yet.
 
 4/18/2011 -
 * Bored in Java class

@@ -211,7 +211,7 @@ function welcome($key){
     $core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
     $core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} <umodes> <chanmodes>");
     $_005 = "";
-    $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$core->config['me']['network']} NAMESX :are supported by this server");
+    $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$core->config['me']['network']} :are supported by this server");
     $this->motd($key);
 }
 
@@ -244,20 +244,22 @@ function join($key, $p=""){
         }
         if(array_key_exists($chan, $core->_channels) === FALSE){
             $tpl = array();
-            $tpl['users'] = array($key => "@@".$core->_clients[$key]['nick']);
+            $tpl['users'] = array($key => "@@");
             $tpl['modes'] = NULL;
             $tpl['bans'] = array();
             $tpl['excepts'] = array();
             $tpl['invex'] = array();
-            $tpl['topic'] = array("message" => NULL, "changed" => NULL, "nick" => NULL);
+            $tpl['topic'] = array("message" => 'test default topic!', "changed" => time(), "nick" => 'phpircd');
             $core->_channels[$chan] = $tpl;
             $core->_clients[$key]['channels'][] = $chan;
             $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} JOIN $chan");
+            $this->names($key, $chan);
         } else {
-            $core->_channels[$chan]['users'][$key] = $core->_clients[$key]['nick'];
+            $core->_channels[$chan]['users'][$key] = '';
             $core->_clients[$key]['channels'][] = $chan;
             foreach($core->_channels[$chan]['users'] as $k=>$u)
                 $core->write($core->_client_sock[$k], ":{$core->_clients[$key]['prefix']} JOIN $chan");
+            $this->names($key, $chan);
             if(!empty($core->_channels[$chan]['topic']['message'])){
                 $this->topic($key, $chan);
             }
@@ -321,9 +323,10 @@ function names($key, $p){
         $names = $core->_channels[$chan]['users'];
         foreach($names as $k => $v){
             if(strpos($v, "@@") !== FALSE){
-                $names[$k] = str_replace("@@", "@", $v);
+                $names[$k] = str_replace("@@", "@", $v).$core->_clients[$k]['nick'];
             }
         }
+        var_dump($names);
         if(!$cl['namesx']){
         
         }
@@ -371,21 +374,51 @@ function nick($key, $p){
         $this->error('433', $key, $p);
         return;
     }
+    if($core->_clients[$key]['nick'] == $p)
+        return;
     if($this->checkNick($p)){
         $p = substr($p, 0, $core->config['ircd']['nicklen']);
         $core->write($socket, ":{$core->_clients[$key]['prefix']} NICK $p");
         $core->_clients[$key]['nick'] = $p;
         $core->_nicks[$key] = strtolower($p);
+        $oldprefix = $core->_clients[$key]['prefix'];
         $core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
+        var_dump($core->_clients[$key]['channels']);
         foreach($core->_clients[$key]['channels'] as $chan){
             foreach($core->_channels[$chan]['users'] as $ckey => $cnick){
                 if($key != $ckey){
-                    $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} NICK $p");
+                    $core->write($core->_client_sock[$ckey], ":{$oldprefix} NICK $p");
                 }
             } 
         }
     } else {
         $this->error('432', $key, $p.":"."Illegal characters.");
+    }
+}
+
+function oper(){
+
+}
+
+function part($key, $p){
+    global $core;
+    $chans = explode(",", $p);
+    foreach($chans as $k => $v){
+        $x = explode(" ", $v, 2);
+        $v = trim($x['0']);
+        $reason = (empty($x['1'])?"":trim($x['1']));
+        if(!array_key_exists($v, $core->_channels)){
+            $this->error('403', $key, $v);
+            return;
+        }
+        if(!array_key_exists($key, $core->_channels[$v]['users'])){
+            $this->error('442', $key, $v);
+            return;
+        }
+        foreach($core->_channels[$v]['users'] as $ckey => $cnick){
+            $core->write($core->_client_sock[$ckey], ":{$core->_clients[$key]['prefix']} PART $v $reason");
+        }
+        unset($core->_channels[$v]['users'][$key]);
     }
 }
 
@@ -514,9 +547,14 @@ function quit($key, $p){
     $socket = $core->_client_sock[$key];
     $core->write($socket, "ERROR: Closing Link: {$core->_clients[$key]['address']} ($p)");
     $core->close($key);
-    //foreach($core->_clients[$key]['channels'] as $key => $value){
+    foreach($core->_clients[$key]['channels'] as $chan){
         //alert the channel's occupants
-    //}
+        foreach($core->_channels[$chan]['users'] as $ck => $cu){
+            $core->write($core->_client_sock[$ck], ":{$core->_clients[$key]['prefix']} QUIT Quit: Leaving");
+        }
+        unset($core->_channels[$chan]['users'][$key]);
+    }
+    unset($core->_clients[$key]);
 }
 
 function topic($key, $p){
@@ -538,12 +576,13 @@ function topic($key, $p){
     if(count($p) == 1){
         $chan = $p['0'];
         $topic = $core->_channels[$chan]['topic'];
+        var_dump($topic);
         if(empty($topic['message'])){
             $core->write($socket, ":{$core->servname} 331 $chan :No topic set.");
             return;
         }
         $core->write($socket, ":{$core->servname} 332 $chan :{$topic['message']}");
-        $core->write($socket, ":{$core->servname} 333 $chan {$topic['name']} {$topic['changed']}");
+        $core->write($socket, ":{$core->servname} 333 $chan {$topic['nick']} {$topic['changed']}");
     } else {
         //change topic
         
