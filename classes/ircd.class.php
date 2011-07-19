@@ -91,6 +91,7 @@ function newConnection($in, $key){
             $this->error('431', $key);
             break;
         }
+        $this->stripColon($e['1']);
         if(array_search(strtolower($e['1']), $core->_nicks) !== FALSE){
             $this->error('433', $key, $e['1']);
             break;
@@ -362,6 +363,7 @@ function names($key, $p){
 function nick($key, $p){
     global $core;
     $socket = $core->_client_sock[$key];
+    $this->stripColon($p);
     if(empty($p)){
         $this->error('461', $key, 'NICK');
         return;
@@ -611,6 +613,11 @@ function checkRealName(&$nick){
     if(!preg_match($this->rnRegex, $nick))
         return false;
     return true;
+}
+
+function stripColon(&$p){
+    if($p[0] == ":")
+        $p = substr($p, 1);
 }
 
 }// end class
