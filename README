@@ -1,6 +1,13 @@
 phpircd v0.3a
 this readme is a changelog lololol
 
+7/19/2011 -
+* Thanks again to cedr and Kuro for testing.
+* QUIT now works as expected. Need to tweak it for ping timeouts/etc.
+* TOPIC now properly announces.
+* NAMES fixed again.
+* More later!
+
 7/18/2011 - 
 * Thanks for all the help from #Frantech: cedr, InsDel, Corbin, and others!
 * NAMES now announces on join and tracks nick changes properly

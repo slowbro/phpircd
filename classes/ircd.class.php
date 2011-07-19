@@ -4,6 +4,7 @@ class ircd {
 
 var $forbidden = array("newConnecntion", "process", "welcome", "error", "debug");
 var $nickRegex = "/^[a-zA-Z\[\]\\\|^`_{}]{1}[a-zA-Z0-9\[\]\\|^`_{}]{0,}$/";
+var $rnRegex = "/^[a-zA-Z\[\]\\\|^`_{} ]{1}[a-zA-Z0-9\[\]\\|^`_{} ]{0,}$/";
 
 function newConnection($in, $key){
     global $core;
@@ -57,7 +58,7 @@ function newConnection($in, $key){
                     $rn = substr($rn, 1);
                 }
             }
-            if(!$this->checkNick($rn)){
+            if(!$this->checkRealName($rn)){
                 $err = "$rn:Illegal characters.";
                 continue;
             }
@@ -207,11 +208,12 @@ function welcome($key){
     $socket = $core->_client_sock[$key];
     $cl = $core->_clients[$key];
     $core->write($socket, ":{$core->servname} 001 {$cl['nick']} :Welcome to the {$core->network} IRC network, {$cl['prefix']}");
-    $core->write($socket, ":{$core->servname} 002 {$cl['nick']} :Your host is {$core->servname} running {$core->version}");
+    $core->write($socket, ":{$core->servname} 002 {$cl['nick']} :Your host is {$core->servname}, running {$core->version}");
     $core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
-    $core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} <umodes> <chanmodes>");
+    $core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} iowghraAsORTVSxNCWqBzvdHtGp lvhopsmntikrRcaqOALQbSeIKVfMCuzNTGj");
     $_005 = "";
     $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$core->config['me']['network']} :are supported by this server");
+    $this->lusers($key);
     $this->motd($key);
 }
 
@@ -249,21 +251,18 @@ function join($key, $p=""){
             $tpl['bans'] = array();
             $tpl['excepts'] = array();
             $tpl['invex'] = array();
-            $tpl['topic'] = array("message" => 'test default topic!', "changed" => time(), "nick" => 'phpircd');
+            $tpl['topic'] = array("message" => 'default topic!', "changed" => time(), "nick" => 'phpircd');
             $core->_channels[$chan] = $tpl;
             $core->_clients[$key]['channels'][] = $chan;
             $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} JOIN $chan");
-            $this->names($key, $chan);
         } else {
             $core->_channels[$chan]['users'][$key] = '';
             $core->_clients[$key]['channels'][] = $chan;
             foreach($core->_channels[$chan]['users'] as $k=>$u)
                 $core->write($core->_client_sock[$k], ":{$core->_clients[$key]['prefix']} JOIN $chan");
-            $this->names($key, $chan);
-            if(!empty($core->_channels[$chan]['topic']['message'])){
-                $this->topic($key, $chan);
-            }
-        }
+       }
+        $this->topic($key, $chan);
+        $this->names($key, $chan);
     }
 }
 
@@ -322,11 +321,8 @@ function names($key, $p){
         $chan = $p['0'];
         $names = $core->_channels[$chan]['users'];
         foreach($names as $k => $v){
-            if(strpos($v, "@@") !== FALSE){
                 $names[$k] = str_replace("@@", "@", $v).$core->_clients[$k]['nick'];
-            }
         }
-        var_dump($names);
         if(!$cl['namesx']){
         
         }
@@ -542,11 +538,10 @@ function protoctl($key, $p){
     }
 }
 
-function quit($key, $p){
+function quit($key, $p="Leaving"){
     global $core;
     $socket = $core->_client_sock[$key];
     $core->write($socket, "ERROR: Closing Link: {$core->_clients[$key]['address']} ($p)");
-    $core->close($key);
     foreach($core->_clients[$key]['channels'] as $chan){
         //alert the channel's occupants
         foreach($core->_channels[$chan]['users'] as $ck => $cu){
@@ -554,7 +549,9 @@ function quit($key, $p){
         }
         unset($core->_channels[$chan]['users'][$key]);
     }
+    $core->close($key);
     unset($core->_clients[$key]);
+    unset($core->_client_sock[$key]);
 }
 
 function topic($key, $p){
@@ -576,16 +573,14 @@ function topic($key, $p){
     if(count($p) == 1){
         $chan = $p['0'];
         $topic = $core->_channels[$chan]['topic'];
-        var_dump($topic);
         if(empty($topic['message'])){
             $core->write($socket, ":{$core->servname} 331 $chan :No topic set.");
             return;
         }
-        $core->write($socket, ":{$core->servname} 332 $chan :{$topic['message']}");
-        $core->write($socket, ":{$core->servname} 333 $chan {$topic['nick']} {$topic['changed']}");
+        $core->write($socket, ":{$core->servname} 332 {$core->_clients[$key]['nick']} $chan :{$topic['message']}");
+        $core->write($socket, ":{$core->servname} 333 {$core->_clients[$key]['nick']} $chan {$topic['nick']} {$topic['changed']}");
     } else {
         //change topic
-        
     }
 }
 
@@ -606,6 +601,15 @@ function checkNick(&$nick){
     if(!preg_match($this->nickRegex, $nick))
         return false;
     $nick = substr($nick, 0, $core->config['ircd']['nicklen']);
+    return true;
+}
+
+function checkRealName(&$nick){
+    global $core;
+    if(empty($nick))
+        return false;
+    if(!preg_match($this->rnRegex, $nick))
+        return false;
     return true;
 }
 

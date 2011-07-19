@@ -74,12 +74,12 @@ while(true){
             } else {
                 $core->debug("Closing Link: client ".(empty($core->_clients[$key]['prefix'])?$core->_clients[$key]['address']:$core->_clients[$key]['prefix']).": Client Exited");
                 unset($reads[$key]);
-                $core->close($key);
+                $ircd->quit($key);
             }
         } else {
             $core->debug("Closing Link: client {$core->_clients[$key]['prefix']}: ".socket_strerror(socket_last_error($value)));
             unset($reads[$key]);
-            $core->close($key);
+            $ircd->quit($key);
         }
     }//end while
     }//end if socket_select
@@ -89,7 +89,7 @@ while(true){
             if(!$value['registered']){
                 $core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['prefix']." (Ping timeout)");
                 $core->debug("Closing Link: client {$value['prefix']} (Ping Timeout)");
-                $core->close($key);
+                $ircd->quit($key);
             } else {
                 if($core->_clients[$key]['lastping'] <= $core->_clients[$key]['lastpong']){
                     $ircd->ping($key, $core->servname, TRUE);
@@ -100,7 +100,7 @@ while(true){
         if(time() > ($core->_clients[$key]['lastpong'] + $core->config['ircd']['pingfreq'] + $core->config['ircd']['pingout'])){
             $core->write($core->_client_sock[$key],"ERROR: Closing link: ".$value['prefix']." (Ping timeout)");
             $core->debug("Closing Link: client {$value['address']} (Ping Timeout)");
-            $core->close($key);
+            $ircd->quit($key);
         }
     }
         usleep(700);
