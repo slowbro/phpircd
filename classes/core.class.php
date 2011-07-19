@@ -27,14 +27,18 @@ function init($config){
     $this->createdate = $this->config['me']['created'];
     foreach($listens as $l){
         $this->debug("bind to address $l");
-        $a = explode(":", trim($l));
+        $a = explode(":", str_replace("::ffff:","",trim($l)));
         $s = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
         $this->_sockets[] = $s;
         if (!socket_set_option($s, SOL_SOCKET, SO_REUSEADDR, 1)) {
             echo socket_strerror(socket_last_error($si))."\n";
             exit;
         } 
-        @socket_bind($s,$a['0'],$a['1']) or die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
+        if(@!socket_bind($s,$a['0'],$a['1']))
+            if(socket_last_error($s) == -10001)
+                @socket_bind($s,"::ffff:".$a['0'],$a['1']) or die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
+            else
+                die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
         socket_listen($s);
         socket_set_nonblock($s);
     }
