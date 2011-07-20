@@ -3,8 +3,8 @@
 class ircd extends core {
 
 var $allowed = array("join","part","lusers","mode","motd","names","nick","oper","ping","pong","privmsg","quit","topic","protoctl","user","who");
-var $nickRegex = "/^[a-zA-Z\[\]\\\|^\`_{}]{1}[a-zA-Z0-9\[\]\\|^\`_{}]{0,}$/";
-var $rnRegex = "/^[a-zA-Z\[\]\\\|^\`_{} ]{1}[a-zA-Z0-9\[\]\\|^\`_{} ]{0,}$/";
+var $nickRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\}]{1}[a-zA-Z0-9\[\]\\|^\`_\{\}]{0,}\$/";
+var $rnRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\} ]{1}[a-zA-Z0-9\[\]\\|^\`_\{\} ]{0,}\$/";
 
 function newConnection($in, $user){
     $e = explode(" ", $in);
