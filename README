@@ -1,6 +1,16 @@
 phpircd v0.3.02
 this readme is a changelog lololol
 
+7/20/2011 -
+* Cleaned up the main file (ircd) a bit- compiled an un-needed foreach into another, amongst other things.
+* Fixed checking for 'Client Exited' socket status when quitting spontaneously.
+* Fixed possible but in regex (sytax error?).
+* Using ircd::$allowed instead of ircd::$forbidden.
+* Cleaned up some stuff in the ircd class
+* Added ircd::nickInUse() for better nick checking.
+* Did away with core::$_nicks.
+* I don't remember what else :(
+
 7/19/2011 -
 * Thanks again to cedr and Kuro for testing.
 * QUIT now works as expected. Need to tweak it for ping timeouts/etc.

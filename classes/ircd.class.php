@@ -2,9 +2,9 @@
 
 class ircd extends core {
 
-var $forbidden = array("newConnecntion", "process", "welcome", "error", "debug");
-var $nickRegex = "/^[a-zA-Z\[\]\\\|^`_{}]{1}[a-zA-Z0-9\[\]\\|^`_{}]{0,}$/";
-var $rnRegex = "/^[a-zA-Z\[\]\\\|^`_{} ]{1}[a-zA-Z0-9\[\]\\|^`_{} ]{0,}$/";
+var $allowed = array("join","part","lusers","mode","motd","names","nick","oper","ping","pong","privmsg","quit","topic","protoctl","user","who");
+var $nickRegex = "/^[a-zA-Z\[\]\\\|^\`_{}]{1}[a-zA-Z0-9\[\]\\|^\`_{}]{0,}$/";
+var $rnRegex = "/^[a-zA-Z\[\]\\\|^\`_{} ]{1}[a-zA-Z0-9\[\]\\|^\`_{} ]{0,}$/";
 
 function newConnection($in, $user){
     $e = explode(" ", $in);
@@ -89,13 +89,12 @@ function newConnection($in, $user){
             break;
         }
         $this->stripColon($e['1']);
-        if(array_search(strtolower($e['1']), $this->_nicks) !== FALSE){
+        if($this->nickInUse($e['1'])){
             $this->error('433', $user, $e['1']);
             break;
         }
         if($this->checkNick(@$e['1'])){
             $user->nick = substr($e['1'], 0, $this->config['ircd']['nicklen']);
-            $this->_nicks[$user->id] = strtolower($e['1']);
             if($user->regbit ^ 2){
                 $user->regbit +=2;
             }
@@ -121,7 +120,7 @@ function process($in, $user){
     unset($e['0']);
     $params = implode (" ", $e);
     $user->lastpong = time();
-    if(method_exists(__CLASS__,$command) && array_search($command, $this->forbidden) === FALSE){
+    if(method_exists(__CLASS__,$command) && array_search($command, $this->allowed) !== FALSE){
         $this->$command($user, $params);
     } else {
         $this->error('421', $user, $command);
@@ -142,7 +141,7 @@ function error($numeric, $user, $extra=""){
     $message = "$extra :No such channel.";
     break;
     case 404:
-    $message = $extra." :Can not send to channel.";
+    $message = "$extra :Can not send to channel.";
     break;
     case 405:
     $message = "$extra :You have joined too many channels.";
@@ -177,13 +176,13 @@ function error($numeric, $user, $extra=""){
     break;
     case 432:
     $extra = explode(":",$extra);
-    $message = $extra['0']." :Erroneous nickname".($extra['1']?": ".$extra['1']:"");
+    $message = "{$extra['0']} :Erroneous nickname".($extra['1']?": ".$extra['1']:"");
     break;
     case 433:
-    $message = $extra." :Nickname already in use.";
+    $message = "$extra :Nickname already in use.";
     break;
     case 442:
-    $message = $extra." :You're not in that channel.";
+    $message = "$extra :You're not in that channel.";
     break;
     case 451:
     $message = $extra." :You have not registered.";
@@ -266,6 +265,10 @@ EOM;
     }
 }
 
+function mode(){
+
+}
+
 function motd($user, $p=""){
     if(empty($p)){
         if(file_exists("motd.txt")){
@@ -342,17 +345,16 @@ function nick($user, $p){
         $this->error('461', $user, 'NICK');
         return;
     }
-    if(array_search(strtolower($p), $this->_nicks) !== FALSE){
+    if($user->nick == $p)
+        return;
+    if($this->nickInUse($p)){
         $this->error('433', $user, $p);
         return;
     }
-    if($user->nick == $p)
-        return;
     if($this->checkNick($p)){
         $p = substr($p, 0, $this->config['ircd']['nicklen']);
         $user->send(":{$user->prefix} NICK $p");
         $user->nick = $p;
-        $this->_nicks[$user->id] = strtolower($p);
         $oldprefix = $user->prefix;
         $user->prefix = $user->nick."!".$user->username."@".$user->address;
         foreach($user->channels as $chan){
@@ -364,7 +366,7 @@ function nick($user, $p){
 }
 
 function oper($user, $p){
-
+    
 }
 
 function part($user, $p){
@@ -467,7 +469,7 @@ function privmsg($user, $p){
         //send to whole channel minus yourself
         $this->_channels[$target]->send(":{$user->prefix} PRIVMSG $target :$message", $user);
     } else {
-        if(($key2 = array_search(strtolower($target), $this->_nicks)) === FALSE){
+        if(!$this->nickInUse($target)){
             //ERR_NOSUCHNICK (user doesnt exist)
             $this->error(401, $user, $target);
             return;
@@ -489,7 +491,7 @@ function protoctl($user, $p){
 }
 
 function quit($user, $p="Leaving"){
-    $user->send("ERROR: Closing Link: {$user->address} ($p)");
+    $user->send("ERROR: Closing Link: {$user->nick}[{$user->address}] ($p)");
     foreach(@$user->channels as $chan){
         $this->_channels[$chan]->send(":{$user->prefix} QUIT :Quit: $p");
         $this->_channels[$chan]->removeUser($user);
@@ -550,6 +552,15 @@ function checkRealName(&$nick){
     if(!preg_match($this->rnRegex, $nick))
         return false;
     return true;
+}
+
+function nickInUse($nick){
+    $nick = strtolower($nick);
+    foreach($this->_clients as $id=>$user){
+        if(strtolower($user->nick) == $nick)
+            return true;
+    }
+    return false;
 }
 
 function stripColon(&$p){

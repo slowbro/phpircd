@@ -8,20 +8,19 @@ var $address;
 var $port;
 var $_clients = array();
 var $_sockets = array();
+var $_channels = array();
 var $client_num = 0;
 var $channel_num = 0;
 var $servname;
 var $network;
-var $_channels = array();
-var $_nicks = array();
 
 function init($config){
     $this->config = parse_ini_file($config, true);
     if(!$this->config)
         die("Config file parse failed: check your syntax!");
     $listens = explode(',', $this->config['core']['listen']);
-    $this->servname = $this->config['me']['servername'];
-    $this->network = $this->config['me']['network'];
+    $this->servname   = $this->config['me']['servername'];
+    $this->network    = $this->config['me']['network'];
     $this->createdate = $this->config['me']['created'];
     foreach($listens as $l){
         $this->debug("bind to address $l");
@@ -54,8 +53,8 @@ function write($sock, $data){
     socket_write($sock, $data, strlen($data));
 }
 
-function close($user, $sock=false){
-    if($sock){
+function close($user, $sock="legacy"){
+    if(is_resource($user)){
         socket_close($user);
     } else {
         @socket_close($user->socket);

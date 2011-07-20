@@ -1,6 +1,5 @@
 #!/usr/bin/php -q
 <?php
-
 require("classes/core.class.php");
 require("classes/ircd.class.php");
 require("classes/user.class.php");
@@ -9,11 +8,10 @@ $ircd = new ircd();
 $ircd->init('config.ini');
 $ircd->debug("listening for new clients");
 while(true){
-    $un = NULL;
     //read-loop for new connections
     $reads = $ircd->_sockets;
     $writes = $reads;
-    if(socket_select($reads, $writes, $un, 0) > 0){
+    if(socket_select($reads, $writes, $un=null, 0) > 0){
     
     foreach($ircd->_sockets as $socket){
       while(in_array($socket, $reads)){
@@ -42,33 +40,28 @@ while(true){
       }
     }
     }
-    $reads = array();
+    //read-loop for client sockets
+    $reads = $writes = array();
     foreach($ircd->_clients as $i => $c)
-        $reads[$i] = $c->socket;
-    if(@socket_select($reads, $writes, $un, 0) > 0){
+        $reads[$i] = $writes[$i] = $c->socket;
+    if(@socket_select($reads, $writes, $un=null, 0) > 0){
       foreach($reads as $key => $value){
         if(false !== ($buf = $ircd->read($value))){
-            $data = trim($buf);
-            if($data!==false){
+            if(!empty($buf)){
+                $data = trim($buf);
                 $user = $ircd->_clients[$key];
                 if(strpos($data, "\n") >= 0 || strpos($data, "\r") >= 0){
-                    $data = str_replace("\r","\n", $data);
-                    $exp = explode("\n", $data);
-                    $data = array();
-                    foreach($exp as $d){
+                    $data = explode("\n", str_replace("\r","\n", $data));
+                    foreach($data as $d){
                         $d = trim($d);
-                        if(!empty($d)){
-                            $data[] = $d;
-                        }
+                        if(!empty($d))
+                            if($user->registered == TRUE)
+                                $ircd->process($d, $user);
+                            else
+                                $ircd->newConnection($d, $user);
                     }
                 }
-                foreach($data as $work){
-                    if($user->registered == TRUE){
-                        $ircd->process($work, $user);
-                    } else {
-                        $ircd->newConnection($work, $user);
-                    }
-                }
+                unset($reads[$key]);
             } else {
                 $ircd->debug("Closing Link: client ".(empty($user->prefix)?$user->address:$user->prefix).": Client Exited");
                 unset($reads[$key]);
@@ -79,7 +72,7 @@ while(true){
             unset($reads[$key]);
             $ircd->quit($user, socket_strerror(socket_last_error($value)));
         }
-    }//end while
+      }//end foreach
     }//end if socket_select
     //do this every iteration regardless of socket state
     foreach($ircd->_clients as $id => $user){
@@ -90,18 +83,17 @@ while(true){
                 $ircd->quit($user, 'Ping Timeout');
             } else {
                 if($user->lastping <= $user->lastpong){
-                    $ircd->ping($user->socket, $ircd->servname, TRUE);
+                    $ircd->ping($user, $ircd->servname, TRUE);
                     $user->lastping = time();
                 }
             }
         }
         if(time() > ($user->lastpong + $ircd->config['ircd']['pingfreq'] + $ircd->config['ircd']['pingout'])){
-            $ircd->write($user->socket,"ERROR: Closing link: ".$user->prefix." (Ping timeout)");
             $ircd->debug("Closing Link: client {$user->address} (Ping Timeout)");
-            $ircd->quit($user);
+            $ircd->quit($user, 'Ping Timeout');
         }
     }
-        usleep(700);
+        usleep(250);
 }
 foreach($ircd->_sockets as $socket)
     socket_close($socket, true);
