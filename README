@@ -1,4 +1,4 @@
-phpircd v0.3.01
+phpircd v0.3.02
 this readme is a changelog lololol
 
 7/19/2011 -
@@ -18,6 +18,13 @@ this readme is a changelog lololol
 * Object-ized users. Each user is now stored as an object so it's cleaner (and easier) to do things. Will move methods later.
 * Added messages for being disconnected on Ping Timeout/etc.
 * New versioning concept: (major).(minor).(build). Still in major version 0 as we're not even a complete IRCd yet. Minor will change whenever I feel like flexing my version-changing muscle.
+(edit 3)
+* Thanks to Pedrobear for some pointers.
+* Class ircd now extends core. No more `global $core;'!
+* Added Channel class and methods.
+* Added methods to User class.
+* Almost all sending is now done through User::send() or Channel::send().
+* Channel::send(msg[, excl]) accepts optional 'excl'- a User object to exclude in sending (as in PRIVMSG).
 
 7/18/2011 - 
 * Thanks for all the help from #Frantech: cedr, InsDel, Corbin, and others!

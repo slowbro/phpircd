@@ -4,53 +4,53 @@
 require("classes/core.class.php");
 require("classes/ircd.class.php");
 require("classes/user.class.php");
-$core = new core();
+require("classes/channel.class.php");
 $ircd = new ircd();
-$core->init('config.ini');
-$core->debug("listening for new clients");
+$ircd->init('config.ini');
+$ircd->debug("listening for new clients");
 while(true){
     $un = NULL;
     //read-loop for new connections
-    $reads = $core->_sockets;
+    $reads = $ircd->_sockets;
     $writes = $reads;
     if(socket_select($reads, $writes, $un, 0) > 0){
     
-    foreach($core->_sockets as $socket){
+    foreach($ircd->_sockets as $socket){
       while(in_array($socket, $reads)){
-        if(count($core->_clients) >= $core->config['ircd']['maxusers']){
+        if(count($ircd->_clients) >= $ircd->config['ircd']['maxusers']){
             $new = @socket_accept($socket);
-            $core->write($new, "ERROR: Maximum clients reached. Please use a different server.");
+            $ircd->write($new, "ERROR: Maximum clients reached. Please use a different server.");
             $ircd->quit($new,'Error: Server Full');
             continue;
         }
         $new = @socket_accept($socket);
         socket_set_nonblock($new);
         $client = new User($new);
-        $core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :*** Looking up your hostname...");
-        $core->debug("new client: {$client->ip}");
+        $ircd->write($new, ":".$ircd->config['me']['servername']." NOTICE AUTH :*** Looking up your hostname...");
+        $ircd->debug("new client: {$client->ip}");
         $hn = gethostbyaddr($client->ip);
         if($hn == $client->ip){
             $client->address = $client->ip;
-            $core->write($new, ":".$core->config['me']['servername']." NOTICE AUTH :*** Can't resolve your hotsname, using your IP instead.");
+            $ircd->write($new, ":".$ircd->config['me']['servername']." NOTICE AUTH :*** Can't resolve your hotsname, using your IP instead.");
         } else {
             $client->address = $hn;
-            $core->write($new, ":".$core->servname." NOTICE AUTH :*** Found your hostname.");
+            $ircd->write($new, ":".$ircd->servname." NOTICE AUTH :*** Found your hostname.");
         }
-        $client->id = $core->sock_num++;
-        $core->_clients[$client->id] = $client;
+        $client->id = $ircd->client_num++;
+        $ircd->_clients[$client->id] = $client;
         unset($reads[array_search($socket, $reads)]);
       }
     }
     }
     $reads = array();
-    foreach($core->_clients as $i => $c)
+    foreach($ircd->_clients as $i => $c)
         $reads[$i] = $c->socket;
     if(@socket_select($reads, $writes, $un, 0) > 0){
       foreach($reads as $key => $value){
-        if(false !== ($buf = $core->read($value))){
+        if(false !== ($buf = $ircd->read($value))){
             $data = trim($buf);
             if($data!==false){
-                $user = $core->_clients[$key];
+                $user = $ircd->_clients[$key];
                 if(strpos($data, "\n") >= 0 || strpos($data, "\r") >= 0){
                     $data = str_replace("\r","\n", $data);
                     $exp = explode("\n", $data);
@@ -70,39 +70,39 @@ while(true){
                     }
                 }
             } else {
-                $core->debug("Closing Link: client ".(empty($user->prefix)?$user->address:$user->prefix).": Client Exited");
+                $ircd->debug("Closing Link: client ".(empty($user->prefix)?$user->address:$user->prefix).": Client Exited");
                 unset($reads[$key]);
                 $ircd->quit($user, 'Client Exited');
             }
         } else {
-            $core->debug("Closing Link: client {$user->prefix}: ".socket_strerror(socket_last_error($value)));
+            $ircd->debug("Closing Link: client {$user->prefix}: ".socket_strerror(socket_last_error($value)));
             unset($reads[$key]);
             $ircd->quit($user, socket_strerror(socket_last_error($value)));
         }
     }//end while
     }//end if socket_select
     //do this every iteration regardless of socket state
-    foreach($core->_clients as $id => $user){
-        if((time() - $user->lastpong) > $core->config['ircd']['pingfreq']){
-            if(!$$user->registered){
-                $core->write($user->socket,"ERROR: Closing link: ".$user->prefix." (Ping timeout)");
-                $core->debug("Closing Link: client {$user->prefix} (Ping Timeout)");
+    foreach($ircd->_clients as $id => $user){
+        if((time() - $user->lastpong) > $ircd->config['ircd']['pingfreq']){
+            if(!$user->registered){
+                $ircd->write($user->socket,"ERROR: Closing link: ".$user->prefix." (Ping timeout)");
+                $ircd->debug("Closing Link: client {$user->prefix} (Ping Timeout)");
                 $ircd->quit($user, 'Ping Timeout');
             } else {
                 if($user->lastping <= $user->lastpong){
-                    $ircd->ping($user->socket, $core->servname, TRUE);
+                    $ircd->ping($user->socket, $ircd->servname, TRUE);
                     $user->lastping = time();
                 }
             }
         }
-        if(time() > ($user->lastpong + $core->config['ircd']['pingfreq'] + $core->config['ircd']['pingout'])){
-            $core->write($user->socket,"ERROR: Closing link: ".$user->prefix." (Ping timeout)");
-            $core->debug("Closing Link: client {$user->address} (Ping Timeout)");
+        if(time() > ($user->lastpong + $ircd->config['ircd']['pingfreq'] + $ircd->config['ircd']['pingout'])){
+            $ircd->write($user->socket,"ERROR: Closing link: ".$user->prefix." (Ping timeout)");
+            $ircd->debug("Closing Link: client {$user->address} (Ping Timeout)");
             $ircd->quit($user);
         }
     }
         usleep(700);
 }
-foreach($core->_sockets as $socket)
+foreach($ircd->_sockets as $socket)
     socket_close($socket, true);
 ?>

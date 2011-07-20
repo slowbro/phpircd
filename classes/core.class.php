@@ -2,14 +2,14 @@
 
 class core {
 
-var $version = "phpircd0.3.01";
+var $version = "phpircd0.3.02";
 var $config;
 var $address;
 var $port;
 var $_clients = array();
-var $_client_sock = array();
 var $_sockets = array();
-var $sock_num = 0;
+var $client_num = 0;
+var $channel_num = 0;
 var $servname;
 var $network;
 var $_channels = array();
@@ -20,8 +20,6 @@ function init($config){
     if(!$this->config)
         die("Config file parse failed: check your syntax!");
     $listens = explode(',', $this->config['core']['listen']);
-//    $this->address = $this->config['core']['address'];
-//    $this->port = $this->config['core']['port'];
     $this->servname = $this->config['me']['servername'];
     $this->network = $this->config['me']['network'];
     $this->createdate = $this->config['me']['created'];

@@ -1,6 +1,6 @@
 <?php
 
-class user extends ircd {
+class user {
 
 var $nick = NULL;
 var $real;
@@ -23,6 +23,20 @@ function __construct($sock){
 
 function __destruct(){
 
+}
+
+function addChannel($chan){
+    $this->channels[] = $chan->name;
+}
+
+function removeChannel($chan){
+    if(($k = array_search($chan->name, $this->channels)) !== FALSE)
+        unset($this->channels[$k]);
+}
+
+function send($msg){
+    global $ircd;
+    $ircd->write($this->socket, $msg);
 }
 
 }
