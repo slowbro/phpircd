@@ -6,7 +6,7 @@ var $forbidden = array("newConnecntion", "process", "welcome", "error", "debug")
 var $nickRegex = "/^[a-zA-Z\[\]\\\|^`_{}]{1}[a-zA-Z0-9\[\]\\|^`_{}]{0,}$/";
 var $rnRegex = "/^[a-zA-Z\[\]\\\|^`_{} ]{1}[a-zA-Z0-9\[\]\\|^`_{} ]{0,}$/";
 
-function newConnection($in, $key){
+function newConnection($in, $user){
     global $core;
     $e = explode(" ", $in);
         $command = strtolower($e['0']);
@@ -24,7 +24,7 @@ function newConnection($in, $key){
         if($p[0] == ":"){
             $p = substr($p, 1);
         }
-        $this->quit($key, $p);
+        $this->quit($user, $p);
         break;
         case 'pass':
 
@@ -32,7 +32,7 @@ function newConnection($in, $key){
         case 'user':
         //USER nick mode unused :Real Name
         if(count($e) < 5){
-            $this->error('461', $key, 'USER');
+            $this->error('461', $user, 'USER');
             break;
         }
         $err = FALSE;
@@ -65,78 +65,74 @@ function newConnection($in, $key){
             break;
         }
         if($err){
-            $this->error('432', $key,"$err");
+            $this->error('432', $user,"$err");
         } else {
             unset($e['3']); //unused
-            $core->_clients[$key]['username'] = $e['1'];
-            $core->_clients[$key]['usermode'] = "";
-            $core->_clients[$key]['realname'] = $rn;
-            $core->_clients[$key]['channels'] = array();
-            $core->_clients[$key]['namesx'] = FALSE;
-            if($core->_clients[$key]['regbit'] ^ 1){
-                $core->_clients[$key]['regbit'] += 1;
+            $user->username = $e['1'];
+            $user->usermode = "";
+            $user->realname = $rn;
+            $user->namesx = FALSE;
+            if($user->regbit ^ 1){
+                $user->regbit += 1;
             }
-            if($core->_clients[$key]['regbit'] == 3){
-                $core->_clients[$key]['lastping'] = time();
-                $core->_clients[$key]['lastpong'] = $core->_clients[$key]['lastping'];
-                                $core->_clients[$key]['registered'] = TRUE;
-                $core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
-                $this->welcome($key);
+            if($user->regbit == 3){
+                $user->lastping = $user->lastpong = time();
+                $user->registered = TRUE;
+                $user->prefix = $user->nick."!".$user->username."@".$user->address;
+                $this->welcome($user);
                         }
         }
 
         break;
         case 'nick':
         if(count($e) < 2){
-            $this->error('431', $key);
+            $this->error('431', $user);
             break;
         }
         $this->stripColon($e['1']);
         if(array_search(strtolower($e['1']), $core->_nicks) !== FALSE){
-            $this->error('433', $key, $e['1']);
+            $this->error('433', $user, $e['1']);
             break;
         }
         if($this->checkNick(@$e['1'])){
-            $core->_clients[$key]['nick'] = substr($e['1'], 0, $core->config['ircd']['nicklen']);
-            $core->_nicks[$key] = strtolower($e['1']);
-            if($core->_clients[$key]['regbit'] ^ 2){
-                $core->_clients[$key]['regbit'] +=2;
+            $user->nick = substr($e['1'], 0, $core->config['ircd']['nicklen']);
+            $core->_nicks[$user->id] = strtolower($e['1']);
+            if($user->regbit ^ 2){
+                $user->regbit +=2;
             }
-            if($core->_clients[$key]['regbit'] == 3){
-                $core->_clients[$key]['lastping'] = time();
-                $core->_clients[$key]['lastpong'] = $core->_clients[$key]['lastping'];
-                $core->_clients[$key]['registered'] = TRUE;
-                $core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
-                $this->welcome($key);
+            if($user->regbit == 3){
+                $user->lastping = $user->lastpong = time();
+                $user->registered = TRUE;
+                $user->prefix = $user->nick."!".$user->username."@".$user->address;
+                $this->welcome($user);
             }
         } else {
-            $this->error('432', $key, $e['1'].":Illegal characters.");
+            $this->error('432', $user, $e['1'].":Illegal characters.");
         }
         break;
         default:
-        $this->error('451', $key, $e['0']);
+        $this->error('451', $user, $e['0']);
     }
 
 }
 
-function process($in, $key){
+function process($in, $user){
     global $core;
     $e = explode(" ", $in);
     $command = strtolower($e['0']);
     unset($e['0']);
     $params = implode (" ", $e);
-    $core->_clients[$key]['lastpong'] = time();
+    $user->lastpong = time();
     if(method_exists(__CLASS__,$command) && array_search($command, $this->forbidden) === FALSE){
-        $this->$command($key, $params);
+        $this->$command($user, $params);
     } else {
-        $this->error('421', $key, $command);
+        $this->error('421', $user, $command);
     }
 }
 
-function error($numeric, $key, $extra=""){
+function error($numeric, $user, $extra=""){
     global $core;
-    $socket = $core->_client_sock[$key];
-    $target = (empty($core->_clients[$key]['nick'])?"*":$core->_clients[$key]['nick']);
+    $target = (empty($user->nick)?"*":$user->nick);
     $prefix = ":".$core->servname." ".$numeric." ".$target." ";
     switch($numeric){
     case 401:
@@ -201,28 +197,26 @@ function error($numeric, $key, $extra=""){
     case '462':
     $message = ":You may not register more than once.";
     }
-    $core->write($socket, $prefix.$message);
+    $core->write($user->socket, $prefix.$message);
 }
 
-function welcome($key){
+function welcome($user){
     global $core;
-    $socket = $core->_client_sock[$key];
-    $cl = $core->_clients[$key];
-    $core->write($socket, ":{$core->servname} 001 {$cl['nick']} :Welcome to the {$core->network} IRC network, {$cl['prefix']}");
-    $core->write($socket, ":{$core->servname} 002 {$cl['nick']} :Your host is {$core->servname}, running {$core->version}");
-    $core->write($socket, ":{$core->servname} 003 {$cl['nick']} :This server was created {$core->createdate}");
-    $core->write($socket, ":{$core->servname} 004 {$cl['nick']} {$core->servname} {$core->version} iowghraAsORTVSxNCWqBzvdHtGp lvhopsmntikrRcaqOALQbSeIKVfMCuzNTGj");
+    $core->write($user->socket, ":{$core->servname} 001 {$user->nick} :Welcome to the {$core->network} IRC network, {$user->prefix}");
+    $core->write($user->socket, ":{$core->servname} 002 {$user->nick} :Your host is {$core->servname}, running {$core->version}");
+    $core->write($user->socket, ":{$core->servname} 003 {$user->nick} :This server was created {$core->createdate}");
+    $core->write($user->socket, ":{$core->servname} 004 {$user->nick} {$core->servname} {$core->version} iowghraAsORTVSxNCWqBzvdHtGp lvhopsmntikrRcaqOALQbSeIKVfMCuzNTGj");
     $_005 = "";
-    $core->write($socket, ":{$core->servname} 005 {$cl['nick']} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$core->config['me']['network']} :are supported by this server");
-    $this->lusers($key);
-    $this->motd($key);
+    $core->write($user->socket, ":{$core->servname} 005 {$user->nick} CHANTYPES={$core->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$core->config['me']['network']} :are supported by this server");
+    $this->lusers($user);
+    $this->motd($user);
 }
 
-function join($key, $p=""){
+function join($user, $p=""){
     global $core;
     $joins = array();
     if(empty($p)){
-        $this->error(461, $key, 'join');
+        $this->error(461, $user, 'join');
         return;
     }
     $ps = explode(" ", $p);
@@ -242,34 +236,34 @@ function join($key, $p=""){
         $chan = $value['0'];
         $kee = @$value['1'];
         if(array_search($chan[0], str_split($core->config['ircd']['chantypes'])) === FALSE){
-            $this->error(403, $key, $chan);
+            $this->error(403, $user, $chan);
             continue;
         }
         if(array_key_exists($chan, $core->_channels) === FALSE){
             $tpl = array();
-            $tpl['users'] = array($key => "@@");
+            $tpl['users'] = array($user->id => "@@");
             $tpl['modes'] = NULL;
             $tpl['bans'] = array();
             $tpl['excepts'] = array();
             $tpl['invex'] = array();
             $tpl['topic'] = array("message" => 'default topic!', "changed" => time(), "nick" => 'phpircd');
             $core->_channels[$chan] = $tpl;
-            $core->_clients[$key]['channels'][] = $chan;
-            $core->write($core->_client_sock[$key], ":{$core->_clients[$key]['prefix']} JOIN $chan");
+            $user->channels[] = $chan;
+            $core->write($user->socket, ":{$user->prefix} JOIN $chan");
         } else {
-            $core->_channels[$chan]['users'][$key] = '';
-            $core->_clients[$key]['channels'][] = $chan;
-            foreach($core->_channels[$chan]['users'] as $k=>$u)
-                $core->write($core->_client_sock[$k], ":{$core->_clients[$key]['prefix']} JOIN $chan");
+            $core->_channels[$chan]['users'][$user->id] = '';
+            $user->channels[] = $chan;
+            foreach($core->_channels[$chan]['users'] as $i=>$u)
+                $core->write($u->socket, ":{$user->prefix} JOIN $chan");
        }
-        $this->topic($key, $chan);
-        $this->names($key, $chan);
+        $this->topic($user, $chan);
+        $this->names($user, $chan);
     }
 }
 
-function lusers($key, $p=""){
+function lusers($user, $p=""){
     global $core;
-    $nick = $core->_clients[$key]['nick'];
+    $nick = $user->nick;
     $lusers = <<<EOM
 :{$core->servname} 251 $nick :There are 2 users and 0 invisible on 1 servers
 :{$core->servname} 252 $nick 0 :operator(s) online
@@ -279,52 +273,49 @@ function lusers($key, $p=""){
 :{$core->servname} 266 $nick :Current Global Users: 113  Max: 130469
 EOM;
     foreach(explode("\n", trim($lusers)) as $s){
-        $core->write($core->_client_sock[$key], trim($s));
+        $core->write($user->socket, trim($s));
     }
 }
 
-function motd($key, $p=""){
+function motd($user, $p=""){
     global $core;
-    $socket = $core->_client_sock[$key];
-    $cl = $core->_clients[$key];
     if(empty($p)){
         if(file_exists("motd.txt")){
-            $core->write($socket, ":{$core->servname} 375 {$cl['nick']} :- {$core->servname} Message of the day -");
+            $core->write($user->socket, ":{$core->servname} 375 {$user->nick} :- {$core->servname} Message of the day -");
             $motd = file("motd.txt");
             foreach($motd as $value){
-                $core->write($socket, ":{$core->servname} 372 {$cl['nick']} :- ".rtrim($value));
+                $core->write($user->socket, ":{$core->servname} 372 {$user->nick} :- ".rtrim($value));
             }
-            $core->write($socket, ":{$core->servname} 376 {$cl['nick']} :End of MOTD");
+            $core->write($user->socket, ":{$core->servname} 376 {$user->nick} :End of MOTD");
         } else {
-            $this->error('422', $key);
+            $this->error('422', $user);
         }
     }
 }
 
-function names($key, $p){
+function names($user, $p){
     global $core;
-    $socket = $core->_client_sock[$key];
-    $cl = $core->_clients[$key];
-    $prefix = ":{$core->servname} 353 {$cl['nick']} ";
+    $prefix = ":{$core->servname} 353 {$user->nick} ";
     if(empty($p)){
         foreach($core->_clients as $val){
-            if(count($val['channels']) == "0"){
-                $names[] = $val['nick'];
+            if(count($val->channels) == "0"){
+                $names[] = $val->nick;
             }
         }
         $prefix .= "= * :";
     } else {
         $p = explode(" ", $p);
         if(array_key_exists($p['0'], $core->_channels) === FALSE){
-            $core->write($socket, ":{$core->servname} 366 {$cl['nick']} {$p['0']} :End of /NAMES list.");
+            $core->write($user->socket, ":{$core->servname} 366 {$user->nick} {$p['0']} :End of /NAMES list.");
             return;
         }
         $chan = $p['0'];
         $names = $core->_channels[$chan]['users'];
         foreach($names as $k => $v){
-                $names[$k] = str_replace("@@", "@", $v).$core->_clients[$k]['nick'];
+                $c = $core->_clients[$k];
+                $names[$k] = str_replace("@@", "@", $v).$c->nick;
         }
-        if(!$cl['namesx']){
+        if(!$user->namesx){
         
         }
         if(array_search("p",str_split($core->_channels[$chan]['modes'])) !== FALSE){
@@ -336,13 +327,13 @@ function names($key, $p){
         }
     }
     if(count(@$names) == 0){
-        $core->write($socket, ":{$core->servname} 366 {$cl['nick']} * :End of /NAMES list.");
+        $core->write($user->socket, ":{$core->servname} 366 {$user->nick} * :End of /NAMES list.");
         return;
     }
     $names = implode(" ", $names);
     $len = strlen($prefix);
     if($len+strlen($names) <= 510){
-        $core->write($socket, $prefix.$names);
+        $core->write($user->socket, $prefix.$names);
     } else {
         $max = 510 - $len;
         while(strlen($names) > 510){
@@ -352,53 +343,52 @@ function names($key, $p){
             $nsub = substr($nsub, 0, $pos);
         }
         $names = substr($names, strlen($nsub)+1);
-        $core->write($socket, $prefix.$nsub);
+        $core->write($user->socket, $prefix.$nsub);
         }
-        $core->write($socket, $prefix.$names);
+        $core->write($user->socket, $prefix.$names);
     }
-    $core->write($socket, ":{$core->servname} 366 {$cl['nick']} ".(empty($chan)?"*":$chan)." :End of /NAMES list.");
-    return;
+    $core->write($user->socket, ":{$core->servname} 366 {$user->nick} ".(empty($chan)?"*":$chan)." :End of /NAMES list.");
 }
 
-function nick($key, $p){
+function nick($user, $p){
     global $core;
-    $socket = $core->_client_sock[$key];
     $this->stripColon($p);
     if(empty($p)){
-        $this->error('461', $key, 'NICK');
+        $this->error('461', $user, 'NICK');
         return;
     }
     if(array_search(strtolower($p), $core->_nicks) !== FALSE){
-        $this->error('433', $key, $p);
+        $this->error('433', $user, $p);
         return;
     }
-    if($core->_clients[$key]['nick'] == $p)
+    if($user->nick == $p)
         return;
     if($this->checkNick($p)){
         $p = substr($p, 0, $core->config['ircd']['nicklen']);
-        $core->write($socket, ":{$core->_clients[$key]['prefix']} NICK $p");
-        $core->_clients[$key]['nick'] = $p;
+        $core->write($user->socket, ":{$user->prefix} NICK $p");
+        $user->nick = $p;
         $core->_nicks[$key] = strtolower($p);
-        $oldprefix = $core->_clients[$key]['prefix'];
-        $core->_clients[$key]['prefix'] = $core->_clients[$key]['nick']."!".$core->_clients[$key]['username']."@".$core->_clients[$key]['address'];
-        var_dump($core->_clients[$key]['channels']);
-        foreach($core->_clients[$key]['channels'] as $chan){
-            foreach($core->_channels[$chan]['users'] as $ckey => $cnick){
-                if($key != $ckey){
-                    $core->write($core->_client_sock[$ckey], ":{$oldprefix} NICK $p");
+        $oldprefix = $user->prefix;
+        $user->prefix = $user->nick."!".$user->username."@".$user->address;
+        var_dump($user->channels);
+        foreach($user->channels as $chan){
+            foreach($core->_channels[$chan]['users'] as $cid => $cnick){
+                if($user->id != $cid){
+                    $c = $core->_clients[$cid];
+                    $core->write($c->socket, ":{$oldprefix} NICK $p");
                 }
             } 
         }
     } else {
-        $this->error('432', $key, $p.":"."Illegal characters.");
+        $this->error('432', $user, $p.":"."Illegal characters.");
     }
 }
 
-function oper(){
+function oper($user, $p){
 
 }
 
-function part($key, $p){
+function part($user, $p){
     global $core;
     $chans = explode(",", $p);
     foreach($chans as $k => $v){
@@ -406,29 +396,29 @@ function part($key, $p){
         $v = trim($x['0']);
         $reason = (empty($x['1'])?"":trim($x['1']));
         if(!array_key_exists($v, $core->_channels)){
-            $this->error('403', $key, $v);
+            $this->error('403', $user, $v);
             return;
         }
-        if(!array_key_exists($key, $core->_channels[$v]['users'])){
-            $this->error('442', $key, $v);
+        if(!array_key_exists($user->id, $core->_channels[$v]['users'])){
+            $this->error('442', $user, $v);
             return;
         }
-        foreach($core->_channels[$v]['users'] as $ckey => $cnick){
-            $core->write($core->_client_sock[$ckey], ":{$core->_clients[$key]['prefix']} PART $v $reason");
+        foreach($core->_channels[$v]['users'] as $cid => $cnick){
+            $c = $core->_clients[$cid];
+            $core->write($c->socket, ":{$user->prefix} PART $v $reason");
         }
-        unset($core->_channels[$v]['users'][$key]);
+        unset($core->_channels[$v]['users'][$user->id]);
     }
 }
 
-function ping($key, $p, $e=false){
+function ping($user, $p, $e=false){
     global $core;
-    $socket = $core->_client_sock[$key];
     if($e){
-        $core->write($socket, "PING :$p");
+        $core->write($user->socket, "PING :$p");
         return;
     }
     if(empty($p)){
-        $this->error('461', $key, 'PING');
+        $this->error('461', $user, 'PING');
         return;
     }
     $p = explode(" ", $p);
@@ -437,50 +427,48 @@ function ping($key, $p, $e=false){
         if(strpos($p, ":") === 0){
             $p = substr($p, 1);
         }
-        $core->write($socket, ":{$core->servname} PONG {$core->servname} ".":$p");
-        $core->_clients[$key]['lastpong'] = time();
+        $core->write($user->socket, ":{$core->servname} PONG {$core->servname} ".":$p");
+        $user->lastpong = time();
     } else {
         //ping some server
     }
 }
 
-function pong($key, $p){
+function pong($user, $p){
     global $core;
-    $socket = $core->_client_sock[$key];
     //PONG :samecrap
     if(strpos($p, ":") === 0){
         $p = substr($p, 1);
     }
     if($p == $core->servname){ //respond to keepalive ping
-        if($core->_clients[$key]['lastpong'] < $core->_clients[$key]['lastping']){
-            $core->_clients[$key]['lastpong'] = time();
+        if($user->lastpong < $user->lastping){
+            $user->lastpong = time();
         }
     }
 }
 
-function privmsg($key, $p){
+function privmsg($user, $p){
     global $core;
-    $socket = $core->_client_sock[$key];
     // target ?:message
     $e = explode(" ", $p);
     $chantypes = str_split($core->config['ircd']['chantypes']);
     $target = $e['0'];
     if($target[0] == ":"){
         //ERR_NORECIPIENT
-        $this->error(411, $key);
+        $this->error(411, $user);
         return;
     }
     if(count($e) < 2){
         //ERR_NOTEXTTOSEND
-        $this->error(412, $key, $target);
+        $this->error(412, $user, $target);
         return;
     }
     if($target[0] == "$"){
-        if($core->_clients[$key]['oper'] & 32){ //replace with actual oper bit
+        if($user->oper & 32){ //replace with actual oper bit
             //client is allowed to message $*
         } else {
             //ERR_NOSUCHNICK
-            $this->error(401, $key, $target);
+            $this->error(401, $user, $target);
             return;
         }
     }
@@ -491,106 +479,104 @@ function privmsg($key, $p){
     if($is_channel){
         if(!preg_match("/[\x01-\x07\x08-\x09\x0B-\x0C\x0E-\x1F\x21-\x2B\x2D-\x39\x3B-\xFF]{1,}/", $target)){
             //ERR_NOSUCHNICK (illegal characters)
-            $this->error(401, $key, $target);
+            $this->error(401, $user, $target);
             return;
         }
         if(array_key_exists($target, $core->_channels) === FALSE){
             //ERR_NOSUCHNICK (channel doesnt exist)
-            $this->error(401, $key, $target);
+            $this->error(401, $user, $target);
             return;
         }
-        if(array_search($target, $core->_clients[$key]['channels']) === FALSE){
+        if(array_search($target, $user->channels) === FALSE){
             //ERR_CANNOTSENDATOCHAN
-            $this->error(404, $key, $target);
+            $this->error(404, $user, $target);
             return;
         }
     } else {
-        $sock = NULL;
+        $c = NULL;
         if(($key2 = array_search(strtolower($target), $core->_nicks)) === FALSE){
             //ERR_NOSUCHNICK (user doesnt exist)
-            $this->error(401, $key, $target);
+            $this->error(401, $user, $target);
             return;
         }
-        $sock = $core->_client_sock[$key2];
+        $c = $core->_clients[$key2];
     }
     $message = substr($p, strlen($target)+1);
     $message = ($message[0] == ":"?substr($message, 1):$message);
     if($is_channel){
         //send to whole channel
-        foreach($core->_channels[$target]['users'] as $k => $v){
-            if($k == $key){
+        foreach($core->_channels[$target]['users'] as $id => $u){
+            if($id == $user->id){
                 continue;
             }
-            $cl = $core->_clients[$k];
-            $core->write($core->_client_sock[$k], ":{$core->_clients[$key]['prefix']} PRIVMSG $target :$message");
+            $c = $core->_clients[$id];
+            $core->write($c->socket, ":{$user->prefix} PRIVMSG $target :$message");
         }
     } else {
-        $core->write($sock, ":".$core->_clients[$key]['prefix']." PRIVMSG ".$target." :$message");
+        $core->write($c->socket, ":".$user->prefix." PRIVMSG ".$target." :$message");
     }
 }
 
-function protoctl($key, $p){
+function protoctl($user, $p){
     global $core;
     if(empty($p)){
-        $this->error(461, $key, 'protoctl');
+        $this->error(461, $user, 'protoctl');
         return;
     }
     if(strtolower($p) == "namesx"){
-        $core->_clients[$key]['namesx'] = TRUE;
+        $user->namesx = TRUE;
     }
 }
 
-function quit($key, $p="Leaving"){
+function quit($user, $p="Quit: Leaving"){
     global $core;
-    $socket = $core->_client_sock[$key];
-    $core->write($socket, "ERROR: Closing Link: {$core->_clients[$key]['address']} ($p)");
-    foreach(@$core->_clients[$key]['channels'] as $chan){
+    $core->write($user->socket, "ERROR: Closing Link: {$user->address} ($p)");
+    foreach(@$user->channels as $chan){
         //alert the channel's occupants
         foreach($core->_channels[$chan]['users'] as $ck => $cu){
-            $core->write($core->_client_sock[$ck], ":{$core->_clients[$key]['prefix']} QUIT Quit: Leaving");
+            $c = $core->_clients[$ck];
+            $core->write($c->socket, ":{$user->prefix} QUIT $p");
         }
-        unset($core->_channels[$chan]['users'][$key]);
+        unset($core->_channels[$chan]['users'][$user->id]);
     }
-    $core->close($key);
-    unset($core->_clients[$key]);
-    unset($core->_client_sock[$key]);
+    $core->close($user);
+    unset($core->_clients[$user->id]);
 }
 
-function topic($key, $p){
+function topic($user, $p){
     global $core;
-    $socket = $core->_client_sock[$key];
     if(empty($p)){
-        $this->error(461, $key, 'topic');
+        $this->error(461, $user, 'topic');
         return;
     }
     $p = explode(" ", $p);
     if(array_key_exists($p['0'], $core->_channels) === FALSE){
-        $this->error(403, $key, $p['0']);
+        $this->error(403, $user, $p['0']);
         return;
     }
-    if(array_search($p['0'], $core->_clients[$key]['channels']) === FALSE){
-        $this->error(442, $key, $p['0']);
+    if(array_search($p['0'], $user->channels) === FALSE){
+        $this->error(442, $user, $p['0']);
         return;
     }
     if(count($p) == 1){
         $chan = $p['0'];
         $topic = $core->_channels[$chan]['topic'];
         if(empty($topic['message'])){
-            $core->write($socket, ":{$core->servname} 331 $chan :No topic set.");
+            $core->write($user->socket, ":{$core->servname} 331 $chan :No topic set.");
             return;
         }
-        $core->write($socket, ":{$core->servname} 332 {$core->_clients[$key]['nick']} $chan :{$topic['message']}");
-        $core->write($socket, ":{$core->servname} 333 {$core->_clients[$key]['nick']} $chan {$topic['nick']} {$topic['changed']}");
+        $core->write($user->socket, ":{$core->servname} 332 {$user->nick} $chan :{$topic['message']}");
+        $core->write($user->socket, ":{$core->servname} 333 {$user->nick} $chan {$topic['nick']} {$topic['changed']}");
     } else {
         //change topic
     }
 }
 
-function user($key, $p){
-    $this->error('462', $key);
+function user($user, $p){
+    $this->error('462', $user);
 }
 
-function who($key, $p){
+function who($user, $p){
     
 }
 

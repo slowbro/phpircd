@@ -1,4 +1,4 @@
-phpircd v0.3a
+phpircd v0.3.01
 this readme is a changelog lololol
 
 7/19/2011 -
@@ -11,6 +11,13 @@ this readme is a changelog lololol
 * Added fix for ipv6-enabled boxes with ipv4 addresses (adds ::ffff:).
 * Changed config.ini to all double-qoutes, as the single quotes broke everything on some boxes.
 * Changed core::close() to ircd::quit() when server full.
+(edit 2)
+* Fixed issue with NICK where leading colon was not stripped.
+* Added utility method ircd::stripColon
+* Added utility method ircd::checkRealName
+* Object-ized users. Each user is now stored as an object so it's cleaner (and easier) to do things. Will move methods later.
+* Added messages for being disconnected on Ping Timeout/etc.
+* New versioning concept: (major).(minor).(build). Still in major version 0 as we're not even a complete IRCd yet. Minor will change whenever I feel like flexing my version-changing muscle.
 
 7/18/2011 - 
 * Thanks for all the help from #Frantech: cedr, InsDel, Corbin, and others!

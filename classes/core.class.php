@@ -2,7 +2,7 @@
 
 class core {
 
-var $version = "phpircd0.3a";
+var $version = "phpircd0.3.01";
 var $config;
 var $address;
 var $port;
@@ -56,14 +56,13 @@ function write($sock, $data){
     socket_write($sock, $data, strlen($data));
 }
 
-function close($key, $sock=false){
+function close($user, $sock=false){
     if($sock){
-        socket_close($key);
+        socket_close($user);
     } else {
-        @socket_close($this->_client_sock[$key]);
-        unset($this->_clients[$key]);
-        unset($this->_client_sock[$key]);
-        unset($this->_nicks[$key]);
+        @socket_close($user->socket);
+        unset($this->_nicks[$user->nick]);
+        unset($this->_clients[$user->id]);
     }
 }
 
