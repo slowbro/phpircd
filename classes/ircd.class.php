@@ -554,6 +554,14 @@ function checkRealName(&$nick){
     return true;
 }
 
+function getUserBySocket($s){
+    foreach($this->_clients as $u){
+        if($u->socket  == $s)
+            return $u;
+    }
+    return false;
+}
+
 function nickInUse($nick){
     $nick = strtolower($nick);
     foreach($this->_clients as $id=>$user){

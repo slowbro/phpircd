@@ -1,4 +1,4 @@
-phpircd v0.3.03
+phpircd v0.3.05
 this readme is a changelog lololol
 
 7/20/2011 -
@@ -10,6 +10,9 @@ this readme is a changelog lololol
 * Added ircd::nickInUse() for better nick checking.
 * Did away with core::$_nicks.
 * I don't remember what else :(
+(edit 1)
+* Fixed some bugs with PHP 5.1.6 - Regex escaping and finding users with keys (not preserved)
+* Added ircd::getUserBySocket()
 
 7/19/2011 -
 * Thanks again to cedr and Kuro for testing.
