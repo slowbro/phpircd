@@ -1,12 +1,9 @@
 #!/usr/bin/php -q
 <?php
-require("classes/core.class.php");
 require("classes/ircd.class.php");
 require("classes/user.class.php");
 require("classes/channel.class.php");
-$ircd = new ircd();
-$ircd->init('config.ini');
-$ircd->debug("listening for new clients");
+$ircd = new ircd('config.ini');
 while(true){
     //select-loop for server AND client sockets
     $reads = $writes = $ircd->_sockets;
@@ -78,6 +75,4 @@ while(true){
     }
         usleep(250);
 }
-foreach($ircd->_sockets as $socket)
-    socket_close($socket, true);
 ?>

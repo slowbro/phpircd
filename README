@@ -1,10 +1,14 @@
-phpircd v0.3.09
+phpircd v0.3.10
 this readme is a changelog lololol
 
 7/21/2011 -
 * Fixed PRIVMSG when PMing (Issue #1).
 * Removed extraneous (and bugged) strpos in file 'ircd' (Issue #3).
 * Fixed posible issue when writing to sockets- now uses user::$buffer and user::writeBuffer() (Issue #4).
+* More core::* to ircd.
+* core::init is now ircd::__construct.
+* Moved on-die code to ircd::__destruct.
+* Trying to clean up the main file as much as possible.
 
 7/20/2011 -
 * Cleaned up the main file (ircd) a bit- compiled an un-needed foreach into another, amongst other things.
