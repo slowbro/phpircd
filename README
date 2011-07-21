@@ -1,4 +1,4 @@
-phpircd v0.3.05
+phpircd v0.3.06
 this readme is a changelog lololol
 
 7/20/2011 -
@@ -13,6 +13,11 @@ this readme is a changelog lololol
 (edit 1)
 * Fixed some bugs with PHP 5.1.6 - Regex escaping and finding users with keys (not preserved)
 * Added ircd::getUserBySocket()
+(edit 2)
+* Removed double read-loop in file 'ircd'- now all processed by 1.
+* Moved accept code to ircd::accept().
+* Fixed NAMES- was trying to access Channel::$nick which does not exist.
+* Various bugfixes.
 
 7/19/2011 -
 * Thanks again to cedr and Kuro for testing.

@@ -6,6 +6,30 @@ var $allowed = array("join","part","lusers","mode","motd","names","nick","oper",
 var $nickRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\}]{1}[a-zA-Z0-9\[\]\\|^\`_\{\}]{0,}\$/";
 var $rnRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\} ]{1}[a-zA-Z0-9\[\]\\|^\`_\{\} ]{0,}\$/";
 
+function accept($socket){ 
+    $new = socket_accept($socket);
+    if(count($this->_clients) >= $this->config['ircd']['maxusers']){
+        $this->write($new, 'ERROR: Maximum clients reached. Please use a different server.');
+        $this->quit($new,'Error: Server Full');
+        return false;
+    }
+    socket_set_nonblock($new);
+    $client = new User($new);
+    $client->send(':'.$this->servname.' NOTICE AUTH :*** Looking up your hostname...');
+    $this->debug("new client: {$client->ip}");
+    $hn = gethostbyaddr($client->ip);
+    if($hn == $client->ip){
+        $client->address = $client->ip;
+        $client->send(':'.$this->servname.' NOTICE AUTH :*** Can\'t resolve your hotsname, using your IP instead.');
+    } else {
+        $client->address = $hn;
+        $client->send(':'.$this->servname.' NOTICE AUTH :*** Found your hostname.');
+    }
+    $client->id = $this->client_num++;
+    $this->_clients[$client->id] = $client;
+    return true;
+}
+
 function newConnection($in, $user){
     $e = explode(" ", $in);
         $command = strtolower($e['0']);
@@ -315,7 +339,7 @@ function names($user, $p){
             $prefix .= "= {$chan->name} :";
         }
     }
-    if(count(@$names) == 0){
+    if(count($names) == 0){
         $user->send(":{$this->servname} 366 {$user->nick} * :End of /NAMES list.");
         return;
     }
@@ -336,7 +360,7 @@ function names($user, $p){
         }
         $user->send($prefix.$names);
     }
-    $user->send(":{$this->servname} 366 {$user->nick} ".(empty($chan->nick)?"*":$chan->nick)." :End of /NAMES list.");
+    $user->send(":{$this->servname} 366 {$user->nick} ".(empty($chan->name)?"*":$chan->name)." :End of /NAMES list.");
 }
 
 function nick($user, $p){

@@ -8,44 +8,19 @@ $ircd = new ircd();
 $ircd->init('config.ini');
 $ircd->debug("listening for new clients");
 while(true){
-    //read-loop for new connections
-    $reads = $ircd->_sockets;
-    $writes = $reads;
-    if(socket_select($reads, $writes, $un=null, 0) > 0){
-    
-    foreach($ircd->_sockets as $socket){
-      while(in_array($socket, $reads)){
-        if(count($ircd->_clients) >= $ircd->config['ircd']['maxusers']){
-            $new = @socket_accept($socket);
-            $ircd->write($new, "ERROR: Maximum clients reached. Please use a different server.");
-            $ircd->quit($new,'Error: Server Full');
-            continue;
-        }
-        $new = @socket_accept($socket);
-        socket_set_nonblock($new);
-        $client = new User($new);
-        $ircd->write($new, ":".$ircd->config['me']['servername']." NOTICE AUTH :*** Looking up your hostname...");
-        $ircd->debug("new client: {$client->ip}");
-        $hn = gethostbyaddr($client->ip);
-        if($hn == $client->ip){
-            $client->address = $client->ip;
-            $ircd->write($new, ":".$ircd->config['me']['servername']." NOTICE AUTH :*** Can't resolve your hotsname, using your IP instead.");
-        } else {
-            $client->address = $hn;
-            $ircd->write($new, ":".$ircd->servname." NOTICE AUTH :*** Found your hostname.");
-        }
-        $client->id = $ircd->client_num++;
-        $ircd->_clients[$client->id] = $client;
-        unset($reads[array_search($socket, $reads)]);
-      }
-    }
-    }
-    //read-loop for client sockets
-    $reads = $writes = array();
+    //read-loop for server AND client sockets
+    $reads = $writes = $ircd->_sockets;
     foreach($ircd->_clients as $i => $c)
-        $reads[$i] = $writes[$i] = $c->socket;
+        $reads[] = $writes[] = $c->socket;
     if(@socket_select($reads, $writes, $un=null, 0) > 0){
       foreach($reads as $key => $value){
+        //accept new
+        if(array_search($value, $ircd->_sockets) !== FALSE){
+            $ircd->accept($value); 
+            unset($reads[$key]);
+            continue;
+        }
+        //process user
         if(false !== ($buf = $ircd->read($value))){
             if(!empty($buf)){
                 $data = trim($buf);
@@ -77,7 +52,8 @@ while(true){
     }//end if socket_select
     //do this every iteration regardless of socket state
     foreach($ircd->_clients as $id => $user){
-        if((time() - $user->lastpong) > $ircd->config['ircd']['pingfreq']){
+        $now = time();
+        if(($now - $user->lastpong) > $ircd->config['ircd']['pingfreq']){
             if(!$user->registered){
                 $ircd->write($user->socket,"ERROR: Closing link: ".$user->prefix." (Ping timeout)");
                 $ircd->debug("Closing Link: client {$user->prefix} (Ping Timeout)");
@@ -85,11 +61,11 @@ while(true){
             } else {
                 if($user->lastping <= $user->lastpong){
                     $ircd->ping($user, $ircd->servname, TRUE);
-                    $user->lastping = time();
+                    $user->lastping = $now;
                 }
             }
         }
-        if(time() > ($user->lastpong + $ircd->config['ircd']['pingfreq'] + $ircd->config['ircd']['pingout'])){
+        if($now > ($user->lastpong + $ircd->config['ircd']['pingfreq'] + $ircd->config['ircd']['pingout'])){
             $ircd->debug("Closing Link: client {$user->address} (Ping Timeout)");
             $ircd->quit($user, 'Ping Timeout');
         }
