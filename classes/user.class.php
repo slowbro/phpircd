@@ -35,8 +35,15 @@ function removeChannel($chan){
 }
 
 function send($msg){
+    $this->buffer[] = $msg;
+}
+
+function writeBuffer(){
     global $ircd;
-    $ircd->write($this->socket, $msg);
+    foreach($this->buffer as $k=> $msg){
+        $ircd->write($this->socket, $msg);
+        unset($this->buffer[$k]);
+    }
 }
 
 }

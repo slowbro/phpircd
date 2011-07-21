@@ -570,6 +570,15 @@ function checkNick(&$nick){
     return true;
 }
 
+function getPendingWrites(){
+    $ret = array();
+    foreach($this->_clients as $user){
+        if(count($user->buffer)!==0)
+            $ret[] = $user;
+    }
+    return $ret;
+}
+
 function checkRealName(&$nick){
     if(empty($nick))
         return false;

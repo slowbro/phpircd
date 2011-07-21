@@ -8,11 +8,12 @@ $ircd = new ircd();
 $ircd->init('config.ini');
 $ircd->debug("listening for new clients");
 while(true){
-    //read-loop for server AND client sockets
+    //select-loop for server AND client sockets
     $reads = $writes = $ircd->_sockets;
     foreach($ircd->_clients as $i => $c)
         $reads[] = $writes[] = $c->socket;
     if(@socket_select($reads, $writes, $un=null, 0) > 0){
+      //read-loop
       foreach($reads as $key => $value){
         //accept new
         if(array_search($value, $ircd->_sockets) !== FALSE){
@@ -45,7 +46,15 @@ while(true){
             unset($reads[$key]);
             $ircd->quit($user, socket_strerror(socket_last_error($value)));
         }
-      }//end foreach
+      }//end read-loop
+      
+      //write-loop
+      $pending = $ircd->getPendingWrites();
+      foreach($pending as $user){
+        if(in_array($user->socket, $writes)){
+            $user->writeBuffer();
+        }
+      }
     }//end if socket_select
     //do this every iteration regardless of socket state
     foreach($ircd->_clients as $id => $user){

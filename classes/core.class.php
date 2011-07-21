@@ -2,7 +2,7 @@
 
 class core {
 
-var $version = "phpircd0.3.08";
+var $version = "phpircd0.3.09";
 var $config;
 var $address;
 var $port;
@@ -51,8 +51,7 @@ function read($sock){
 function write($sock, $data){
     $this->debug(">> ".$data);
     $data = substr($data, 0, 509)."\r\n";
-    if($sock !== false)
-        socket_write($sock, $data, strlen($data));
+    socket_write($sock, $data, strlen($data));
 }
 
 function close($user, $sock="legacy"){
