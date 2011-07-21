@@ -1,5 +1,8 @@
-phpircd v0.3.06
+phpircd v0.3.07
 this readme is a changelog lololol
+
+7/21/2011 -
+* Fixed PRIVMSG when PMing.
 
 7/20/2011 -
 * Cleaned up the main file (ircd) a bit- compiled an un-needed foreach into another, amongst other things.

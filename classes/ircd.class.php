@@ -493,14 +493,15 @@ function privmsg($user, $p){
         //send to whole channel minus yourself
         $this->_channels[$target]->send(":{$user->prefix} PRIVMSG $target :$message", $user);
     } else {
-        if(!$this->nickInUse($target)){
+        if(($tuser = $this->getUserByNick($target)) == FALSE){
             //ERR_NOSUCHNICK (user doesnt exist)
             $this->error(401, $user, $target);
             return;
         }
         $message = substr($p, strlen($target)+1);
         $message = ($message[0] == ":"?substr($message, 1):$message);
-        $this->_clients[$key2]->send(":".$user->prefix." PRIVMSG ".$target." :$message");
+        var_dump($tuser);
+        $tuser->send(":".$user->prefix." PRIVMSG ".$target." :$message");
     }
 }
 
@@ -576,6 +577,15 @@ function checkRealName(&$nick){
     if(!preg_match($this->rnRegex, $nick))
         return false;
     return true;
+}
+
+function getUserByNick($n){
+    $n = strtolower($n);
+    foreach($this->_clients as $u){
+        if(strtolower($u->nick)  == $n)
+            return $u;
+    }
+    return false;
 }
 
 function getUserBySocket($s){
