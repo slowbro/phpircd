@@ -2,7 +2,7 @@
 
 class core {
 
-var $version = "phpircd0.3.07";
+var $version = "phpircd0.3.08";
 var $config;
 var $address;
 var $port;
@@ -44,13 +44,15 @@ function init($config){
 function read($sock){
     $buf = socket_read($sock, 1024, PHP_BINARY_READ);
     if($buf)
-        $this->debug(trim($buf));
+        $this->debug("<< ".trim($buf));
     return $buf;
 }
 
 function write($sock, $data){
+    $this->debug(">> ".$data);
     $data = substr($data, 0, 509)."\r\n";
-    socket_write($sock, $data, strlen($data));
+    if($sock !== false)
+        socket_write($sock, $data, strlen($data));
 }
 
 function close($user, $sock="legacy"){
@@ -58,7 +60,6 @@ function close($user, $sock="legacy"){
         socket_close($user);
     } else {
         @socket_close($user->socket);
-        unset($this->_nicks[$user->nick]);
         unset($this->_clients[$user->id]);
     }
 }

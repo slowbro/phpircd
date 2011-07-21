@@ -25,17 +25,14 @@ while(true){
             if(!empty($buf)){
                 $data = trim($buf);
                 $user = $ircd->getUserBySocket($value);
-                if(!is_object($user)){echo "DEBUG: $key $value '$buf'".PHP_EOL;var_dump($ircd->_clients);}
-                if(strpos($data, "\n") >= 0 || strpos($data, "\r") >= 0){
-                    $data = explode("\n", str_replace("\r","\n", $data));
-                    foreach($data as $d){
-                        $d = trim($d);
-                        if(!empty($d))
-                            if($user->registered == TRUE)
-                                $ircd->process($d, $user);
-                            else
-                                $ircd->newConnection($d, $user);
-                    }
+                $data = explode("\n", str_replace("\r","\n", $data));
+                foreach($data as $d){
+                    $d = trim($d);
+                    if(!empty($d))
+                        if($user->registered === TRUE)
+                            $ircd->process($d, $user);
+                        else
+                            $ircd->newConnection($d, $user);
                 }
                 unset($reads[$key]);
             } else {

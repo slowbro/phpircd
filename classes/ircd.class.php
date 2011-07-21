@@ -515,14 +515,13 @@ function protoctl($user, $p){
     }
 }
 
-function quit($user, $p="Leaving"){
-    $user->send("ERROR: Closing Link: {$user->nick}[{$user->address}] ($p)");
+function quit($user, $p="Quit: Leaving"){
     foreach(@$user->channels as $chan){
-        $this->_channels[$chan]->send(":{$user->prefix} QUIT :Quit: $p");
+        $this->_channels[$chan]->send(":{$user->prefix} QUIT :$p");
         $this->_channels[$chan]->removeUser($user);
     }
+    $user->send("ERROR: Closing Link: {$user->nick}[{$user->address}] ($p)");
     $this->close($user);
-    unset($this->_clients[$user->id]);
 }
 
 function topic($user, $p){
