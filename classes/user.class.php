@@ -17,8 +17,6 @@ var $lastpong;
 var $ssl = false;
 
 function __construct($sock, $ssl=false){
-    global $ircd;
-    $ircd->debug("Called user::__construct with ssl=".(int)$ssl);
     $this->socket = $sock;
     $this->ssl = $ssl;
     $ip = stream_socket_get_name($this->socket, true);
@@ -41,14 +39,11 @@ function removeChannel($chan){
 }
 
 function send($msg){
-    global $ircd;
-    $ircd->debug("Called user::send");
     $this->buffer[] = $msg;
 }
 
 function writeBuffer(){
     global $ircd;
-    $ircd->debug("Called user::writeBuffer with this::ssl=".(int)$this->ssl);
     foreach($this->buffer as $k=> $msg){
         $ircd->write($this->socket, $msg);
         unset($this->buffer[$k]);

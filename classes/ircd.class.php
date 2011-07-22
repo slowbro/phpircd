@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.3.10";
+var $version = "phpircd0.4.00";
 var $config;
 var $address;
 var $port;
@@ -581,7 +581,6 @@ function __destruct(){
 }
 
 function accept($socket, $ssl=false){
-    $this->debug("Called ircd::accept with ssl=".(int)$ssl);
     $new = stream_socket_accept($socket, 0);
     if($ssl){
         stream_socket_enable_crypto($new, true, STREAM_CRYPTO_METHOD_TLS_SERVER);
@@ -615,7 +614,6 @@ function accept($socket, $ssl=false){
 }
 
 function createSocket($ip, $port, $ssl=false){
-    $this->debug("Called ircd::createSocket with ssl=".(int)$ssl);
     if($ssl){
         if(!preg_match("/$[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}^/", $ip))
             $ip = '['.$ip.']';
@@ -653,24 +651,11 @@ function createSocket($ip, $port, $ssl=false){
     }
 }
 
-function readOld($sock){
-    $buf = socket_read($sock, 1024, PHP_BINARY_READ);
-    if($buf)
-        $this->debug("<< ".trim($buf));
-    return $buf;
-}
-
 function read($sock){
     $buf = fread($sock, 1024);
     if($buf)
         $this->debug("<< ".trim($buf));
     return $buf;
-}
-
-function writeOld($sock, $data){
-    $this->debug(">> ".$data);
-    $data = substr($data, 0, 509)."\r\n";
-    socket_write($sock, $data, strlen($data));
 }
 
 function write($sock, $data){
