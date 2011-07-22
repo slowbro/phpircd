@@ -7,22 +7,43 @@ $ircd = new ircd('config.ini');
 while(true){
     //select-loop for server AND client sockets
     $reads = $writes = $ircd->_sockets;
+    $ssl_reads = $ssl_writes = $ircd->_ssl_sockets;
     foreach($ircd->_clients as $i => $c)
-        $reads[] = $writes[] = $c->socket;
-    if(@socket_select($reads, $writes, $un=null, 0) > 0){
-      //read-loop
+        if($c->ssl)
+            $ssl_reads[] = $ssl_writes[] = $c->socket;
+        else
+            $reads[] = $writes[] = $c->socket;
+    if(socket_select($reads, $writes, $un=null, 0, 200) > 0 || stream_select($ssl_reads, $ssl_writes, $un=null, 0, 200) > 0){
+      $reads = $reads + $ssl_reads;
+      $writes = $writes + $ssl_writes;
+      var_dump($reads);
+      var_dump($writes);
+      //read-loop (plain)
       foreach($reads as $key => $value){
-        //accept new
+        //accept new (plain)
         if(array_search($value, $ircd->_sockets) !== FALSE){
+            var_dump($reads);
             $ircd->accept($value); 
             unset($reads[$key]);
             continue;
         }
+
+        //accept new (ssl)
+        if(array_search($value, $ircd->_ssl_sockets) !== FALSE){
+            $ircd->accept($value, true);
+            unset($reads[$key]);
+            continue;
+        }
+
         //process user
-        if(false !== ($buf = $ircd->read($value))){
+        $user = $ircd->getUserBySocket($value);
+        if($user->ssl)
+            $buf = $ircd->readSSL($value);
+        else
+            $buf = $ircd->read($value);
+        if(false !== $buf){
             if(!empty($buf)){
                 $data = trim($buf);
-                $user = $ircd->getUserBySocket($value);
                 $data = explode("\n", str_replace("\r","\n", $data));
                 foreach($data as $d){
                     $d = trim($d);
@@ -43,15 +64,15 @@ while(true){
             unset($reads[$key]);
             $ircd->quit($user, socket_strerror(socket_last_error($value)));
         }
-      }//end read-loop
+      }//end read-loop (plain)
       
-      //write-loop
+      //write-loop (plain)
       $pending = $ircd->getPendingWrites();
       foreach($pending as $user){
         if(in_array($user->socket, $writes)){
             $user->writeBuffer();
         }
-      }
+      }//end write-loop (plain)
     }//end if socket_select
     //do this every iteration regardless of socket state
     foreach($ircd->_clients as $id => $user){
@@ -73,6 +94,6 @@ while(true){
             $ircd->quit($user, 'Ping Timeout');
         }
     }
-        usleep(250);
+        usleep(50);
 }
 ?>

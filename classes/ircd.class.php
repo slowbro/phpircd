@@ -17,30 +17,6 @@ var $allowed = array("join","part","lusers","mode","motd","names","nick","oper",
 var $nickRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\}]{1}[a-zA-Z0-9\[\]\\|^\`_\{\}]{0,}\$/";
 var $rnRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\} ]{1}[a-zA-Z0-9\[\]\\|^\`_\{\} ]{0,}\$/";
 
-function accept($socket){ 
-    $new = socket_accept($socket);
-    if(count($this->_clients) >= $this->config['ircd']['maxusers']){
-        $this->write($new, 'ERROR: Maximum clients reached. Please use a different server.');
-        $this->quit($new,'Error: Server Full');
-        return false;
-    }
-    socket_set_nonblock($new);
-    $client = new User($new);
-    $client->send(':'.$this->servname.' NOTICE AUTH :*** Looking up your hostname...');
-    $this->debug("new client: {$client->ip}");
-    $hn = gethostbyaddr($client->ip);
-    if($hn == $client->ip){
-        $client->address = $client->ip;
-        $client->send(':'.$this->servname.' NOTICE AUTH :*** Can\'t resolve your hotsname, using your IP instead.');
-    } else {
-        $client->address = $hn;
-        $client->send(':'.$this->servname.' NOTICE AUTH :*** Found your hostname.');
-    }
-    $client->id = $this->client_num++;
-    $this->_clients[$client->id] = $client;
-    return true;
-}
-
 function newConnection($in, $user){
     $e = explode(" ", $in);
         $command = strtolower($e['0']);
@@ -300,8 +276,8 @@ EOM;
     }
 }
 
-function mode(){
-
+function mode($user, $p){
+    
 }
 
 function motd($user, $p=""){
@@ -576,26 +552,24 @@ function __construct($config){
     $this->config = parse_ini_file($config, true);
     if(!$this->config)
         die("Config file parse failed: check your syntax!");
-    $listens = explode(',', $this->config['core']['listen']);
     $this->servname   = $this->config['me']['servername'];
     $this->network    = $this->config['me']['network'];
     $this->createdate = $this->config['me']['created'];
+    $listens = explode(',', $this->config['core']['listen']);
     foreach($listens as $l){
         $this->debug("bind to address $l");
-        $a = explode(":", str_replace("::ffff:","",trim($l)));
-        $s = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
-        $this->_sockets[] = $s;
-        if (!socket_set_option($s, SOL_SOCKET, SO_REUSEADDR, 1)) {
-            echo socket_strerror(socket_last_error($si))."\n";
-            exit;
-        }
-        if(@!socket_bind($s,$a['0'],$a['1']))
-            if(socket_last_error($s) == -10001)
-                @socket_bind($s,"::ffff:".$a['0'],$a['1']) or die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
-            else
-                die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
-        socket_listen($s);
-        socket_set_nonblock($s);
+        $c = strrpos($l, ":") or die("...malformed address");
+        $addr = substr($l, 0, $c);
+        $port = substr($l, $c+1);
+        $this->createSocket($addr, $port);
+    }
+    $listens_ssl = explode(',', $this->config['core']['listen_ssl']);
+    foreach($listens_ssl as $l){
+        $this->debug("bind to address $l (SSL)");
+        $c = strrpos($l, ":") or die("...malformed address");
+        $addr = substr($l, 0, $c);
+        $port = substr($l, $c+1);
+        $this->createSocket($addr, $port, true);
     }
     $this->debug("listening for new clients");
 }
@@ -605,8 +579,82 @@ function __destruct(){
         socket_close($socket);
 }
 
+function accept($socket, $ssl=false){
+    if($ssl){
+        $new = @stream_socket_accept($socket);
+        if(!$new){
+            $this->debug("Closing connection: unknown (broken pipe).");
+            return false;
+        }
+        stream_set_blocking($new, 0);
+        $client = new User($new, true);
+    } else {
+        $new = socket_accept($socket);
+        socket_set_nonblock($new);
+        $client = new User($new);
+    }
+    if(count($this->_clients) >= $this->config['ircd']['maxusers']){
+        $client->send('ERROR: Maximum clients reached. Please use a different server.');
+        $this->quit($client,'Error: Server Full');
+        return false;
+    }
+    $client->send(':'.$this->servname.' NOTICE AUTH :*** Looking up your hostname...');
+    $this->debug("new client: {$client->ip}");
+    $hn = gethostbyaddr($client->ip);
+    if($hn == $client->ip){
+        $client->address = $client->ip;
+        $client->send(':'.$this->servname.' NOTICE AUTH :*** Can\'t resolve your hotsname, using your IP instead.');
+    } else {
+        $client->address = $hn;
+        $client->send(':'.$this->servname.' NOTICE AUTH :*** Found your hostname.');
+    }
+    $client->id = $this->client_num++;
+    $this->_clients[$client->id] = $client;
+    return true;
+}
+
+function createSocket($ip, $port, $ssl=false){
+    if($ssl){
+        if(!preg_match("/$[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}^/", $ip))
+            $ip = '['.$ip.']';
+        $arr = array('ssl'=>
+            array(
+                'local_cert'=>'cert.pem',
+                'verify_peer'=>false,
+                'allow_self_signed'=>true,
+                'passphrase'=>''
+            )
+        );
+        $ctx = stream_context_create($arr);
+        $s = stream_socket_server("ssl://$ip:$port", $errno, $errstr, STREAM_SERVER_LISTEN|STREAM_SERVER_BIND, $ctx);
+        if(!$s)
+            die("Could not bind socket: ".$errstr."\n");
+        $this->_ssl_sockets[] = $s;
+    } else { 
+        $s = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
+        $this->_sockets[] = $s;
+        if(!socket_set_option($s, SOL_SOCKET, SO_REUSEADDR, 1))
+            die(socket_strerror(socket_last_error($si))."\n");
+        if(@!socket_bind($s,$ip,$port))
+            if(socket_last_error($s) == -10001)
+                @socket_bind($s,"::ffff:".$ip,$port) or die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
+            else
+                die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
+        socket_listen($s);
+        socket_set_nonblock($s);
+    }
+    echo $s.PHP_EOL;
+}
+
 function read($sock){
     $buf = socket_read($sock, 1024, PHP_BINARY_READ);
+    if($buf)
+        $this->debug("<< ".trim($buf));
+    return $buf;
+}
+
+function readSSL($sock){
+    $buf = fread($sock, 1024);
     if($buf)
         $this->debug("<< ".trim($buf));
     return $buf;
@@ -616,6 +664,12 @@ function write($sock, $data){
     $this->debug(">> ".$data);
     $data = substr($data, 0, 509)."\r\n";
     socket_write($sock, $data, strlen($data));
+}
+
+function writeSSL($sock, $data){
+    $this->debug(">> ".$data);
+    $data = substr($data, 0, 509)."\r\n";
+    fwrite($sock, $data);
 }
 
 function close($user, $sock="legacy"){

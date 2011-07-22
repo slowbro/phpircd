@@ -14,10 +14,18 @@ var $regbit = 0;
 var $registered = false;
 var $lastping;
 var $lastpong;
+var $ssl = false;
 
-function __construct($sock){
+function __construct($sock, $ssl=false){
     $this->socket = $sock;
-    socket_getpeername($sock, $this->ip);
+    $this->ssl = $ssl;
+    if($this->ssl){
+        $ip = stream_socket_get_name($this->socket, true);
+        $c = strrpos($ip, ":");
+        $this->ip = substr($ip, 0, $c);
+    } else {
+       socket_getpeername($sock, $this->ip);
+    }
     $this->lastping = $this->lastpong = time();
 }
 
@@ -41,7 +49,10 @@ function send($msg){
 function writeBuffer(){
     global $ircd;
     foreach($this->buffer as $k=> $msg){
-        $ircd->write($this->socket, $msg);
+        if($this->ssl)
+            $ircd->writeSSL($this->socket, $msg);
+        else
+            $ircd->write($this->socket, $msg);
         unset($this->buffer[$k]);
     }
 }
