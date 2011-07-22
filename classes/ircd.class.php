@@ -8,6 +8,7 @@ var $address;
 var $port;
 var $_clients = array();
 var $_sockets = array();
+var $_ssl_sockets = array();
 var $_channels = array();
 var $client_num = 0;
 var $channel_num = 0;
@@ -555,7 +556,7 @@ function __construct($config){
     $this->servname   = $this->config['me']['servername'];
     $this->network    = $this->config['me']['network'];
     $this->createdate = $this->config['me']['created'];
-    $listens = explode(',', $this->config['core']['listen']);
+    $listens = (empty($this->config['core']['listen'])?array():explode(',', $this->config['core']['listen']));
     foreach($listens as $l){
         $this->debug("bind to address $l");
         $c = strrpos($l, ":") or die("...malformed address");
@@ -580,19 +581,19 @@ function __destruct(){
 }
 
 function accept($socket, $ssl=false){
+    $this->debug("Called ircd::accept with ssl=".(int)$ssl);
+    $new = stream_socket_accept($socket, 0);
     if($ssl){
-        $new = @stream_socket_accept($socket);
+        stream_socket_enable_crypto($new, true, STREAM_CRYPTO_METHOD_TLS_SERVER);
         if(!$new){
             $this->debug("Closing connection: unknown (broken pipe).");
             return false;
         }
-        stream_set_blocking($new, 0);
         $client = new User($new, true);
     } else {
-        $new = socket_accept($socket);
-        socket_set_nonblock($new);
         $client = new User($new);
     }
+    stream_set_blocking($new, 0);
     if(count($this->_clients) >= $this->config['ircd']['maxusers']){
         $client->send('ERROR: Maximum clients reached. Please use a different server.');
         $this->quit($client,'Error: Server Full');
@@ -614,6 +615,7 @@ function accept($socket, $ssl=false){
 }
 
 function createSocket($ip, $port, $ssl=false){
+    $this->debug("Called ircd::createSocket with ssl=".(int)$ssl);
     if($ssl){
         if(!preg_match("/$[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}^/", $ip))
             $ip = '['.$ip.']';
@@ -626,12 +628,18 @@ function createSocket($ip, $port, $ssl=false){
             )
         );
         $ctx = stream_context_create($arr);
-        $s = stream_socket_server("ssl://$ip:$port", $errno, $errstr, STREAM_SERVER_LISTEN|STREAM_SERVER_BIND, $ctx);
+        $s = stream_socket_server("tls://$ip:$port", $errno, $errstr, STREAM_SERVER_LISTEN|STREAM_SERVER_BIND, $ctx);
         if(!$s)
             die("Could not bind socket: ".$errstr."\n");
         $this->_ssl_sockets[] = $s;
     } else { 
-        $s = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
+        if(!preg_match("/$[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}^/", $ip))
+            $ip = '['.$ip.']';
+        $s = stream_socket_server("tcp://$ip:$port", $errno, $errstr, STREAM_SERVER_LISTEN|STREAM_SERVER_BIND);
+        if(!$s)
+            die("Could not bind socket: ".$errstr."\n");
+        $this->_sockets[] = $s;
+/*        $s = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
         $this->_sockets[] = $s;
         if(!socket_set_option($s, SOL_SOCKET, SO_REUSEADDR, 1))
             die(socket_strerror(socket_last_error($si))."\n");
@@ -641,32 +649,31 @@ function createSocket($ip, $port, $ssl=false){
             else
                 die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
         socket_listen($s);
-        socket_set_nonblock($s);
+        #socket_set_nonblock($s);*/
     }
-    echo $s.PHP_EOL;
 }
 
-function read($sock){
+function readOld($sock){
     $buf = socket_read($sock, 1024, PHP_BINARY_READ);
     if($buf)
         $this->debug("<< ".trim($buf));
     return $buf;
 }
 
-function readSSL($sock){
+function read($sock){
     $buf = fread($sock, 1024);
     if($buf)
         $this->debug("<< ".trim($buf));
     return $buf;
 }
 
-function write($sock, $data){
+function writeOld($sock, $data){
     $this->debug(">> ".$data);
     $data = substr($data, 0, 509)."\r\n";
     socket_write($sock, $data, strlen($data));
 }
 
-function writeSSL($sock, $data){
+function write($sock, $data){
     $this->debug(">> ".$data);
     $data = substr($data, 0, 509)."\r\n";
     fwrite($sock, $data);
