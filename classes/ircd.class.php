@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.00";
+var $version = "phpircd0.4.01";
 var $config;
 var $address;
 var $port;
@@ -278,7 +278,26 @@ EOM;
 }
 
 function mode($user, $p){
-    
+    if(empty($p)){
+        $this->error(461, $user, 'MODE');
+        return;
+    }
+    $p = explode(" ", $p);
+    $target = $p['0'];
+    if($this->channelExists($target)){
+        $channel = $this->_channels[$target];
+        if(count($p) == 1){
+            $user->send(":{$this->servname} 324 {$user->nick} {$channel->name} ".$channel->getModes());
+            $user->send(":{$this->servname} 329 {$user->nick} {$channel->name} ".$channel->created);
+        } else {
+            unset($p['0']);
+            $modes = implode(" ", $p);
+            $channel->setModes($user, $modes);
+        }
+    } else {
+        //user mode(s)
+        //1: mask (+a +aa-o +a-ooa)  2...: usernames
+    }
 }
 
 function motd($user, $p=""){
@@ -319,9 +338,9 @@ function names($user, $p){
         if(!$user->namesx){
         
         }
-        if(array_search("p",str_split($chan->modes)) !== FALSE){
+        if(array_key_exists("p",$chan->modes) !== FALSE){
             $prefix .= "* {$chan->name} :";
-        } elseif(array_search("s",str_split($chan->modes)) !== FALSE){
+        } elseif(array_key_exists("s",$chan->modes) !== FALSE){
             $prefix .= "@ {$chan->name} :";
         } else {
             $prefix .= "= {$chan->name} :";
@@ -680,12 +699,24 @@ function debug($msg){
 
 //utility methods
 
+function channelExists($chan){
+    return (array_key_exists($chan, $this->_channels)===false?false:true);
+}
+
 function checkNick(&$nick){
     if(empty($nick))
         return false;
     if(!preg_match($this->nickRegex, $nick))
         return false;
     $nick = substr($nick, 0, $this->config['ircd']['nicklen']);
+    return true;
+}
+
+function checkRealName(&$nick){
+    if(empty($nick))
+        return false;
+    if(!preg_match($this->rnRegex, $nick))
+        return false;
     return true;
 }
 
@@ -696,14 +727,6 @@ function getPendingWrites(){
             $ret[] = $user;
     }
     return $ret;
-}
-
-function checkRealName(&$nick){
-    if(empty($nick))
-        return false;
-    if(!preg_match($this->rnRegex, $nick))
-        return false;
-    return true;
 }
 
 function getUserByNick($n){
