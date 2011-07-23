@@ -4,6 +4,7 @@ class Channel {
 
 var $id;
 var $name;
+var $created = 0;
 var $users = array();
 var $modes = array();
 var $bans = array();
@@ -50,19 +51,31 @@ function send($msg, $excl=""){
 }
 
 function setModes($user, $mask){
+    global $ircd, $channelModes;
     $parts = explode(" ", $mask);
     $mask = str_split($parts['0']);
+    array_shift($parts);
     $act = "";
     foreach($mask as $c){
         if($c == '+' || $c == '-'){
             $act = $c;
             continue;
         }
-        if($act == '+')
-            $this->modes[$c] = '';
-        else
+        if($act == '+'){
+            if($channelModes[$c]['extra']==true && !isset($parts['0'])){
+                continue;
+            } elseif($channelModes[$c]['extra']==true && isset($parts['0'])){
+                $this->modes[$c] = array_shift($parts);
+            } elseif(isset($channelModes[$c])){
+                $this->modes[$c] = NULL;
+            } else {
+                $ircd->error(461,$user,'MODE');
+                continue;
+            }
+        } else {
             unset($this->modes[$c]);
-        $this->send(":{$user->prefix} MODE $this->name $act$c");
+        }
+        $this->send(":{$user->prefix} MODE $this->name $act$c".(empty($this->modes[$c])?'':' '.$this->modes[$c]));
     }
 }
 

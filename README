@@ -1,4 +1,4 @@
-phpircd v0.4.01
+phpircd v0.4.02
 this readme is a changelog lololol
 
 7/22/2011 -
@@ -10,6 +10,11 @@ this readme is a changelog lololol
 * MODE for channels works now- will display modes and created time.
 * MODE is very granular right now and only works for modes not requiring extra stuff likl +l or +L.
 * MODE still does nothing for user modes. Need to find a way to set mode related stuff- such as restricted (+aoO) and whatnot.
+(edit 2)
+* Unknown channel mode now throws error.
+* New file for storing channel modes and properies.
+* Channel mode missing extra (like +l, +L) is ignored.
+* Going to do regex checking for extra.
 
 7/21/2011 -
 * Fixed PRIVMSG when PMing (Issue #1).

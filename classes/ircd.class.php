@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.01";
+var $version = "phpircd0.4.02";
 var $config;
 var $address;
 var $port;
@@ -204,6 +204,9 @@ function error($numeric, $user, $extra=""){
     break;
     case '462':
     $message = ":You may not register more than once.";
+    break;
+    case '472':
+    $message = "$extra :is unknown mode char to me";
     }
     $user->send($prefix.$message);
 }

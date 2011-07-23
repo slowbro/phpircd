@@ -1,5 +1,6 @@
 #!/usr/bin/php -q
 <?php
+require("include/channelmodes.php");
 require("classes/ircd.class.php");
 require("classes/user.class.php");
 require("classes/channel.class.php");
