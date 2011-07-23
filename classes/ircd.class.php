@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.02";
+var $version = "phpircd0.4.03";
 var $config;
 var $address;
 var $port;
@@ -566,7 +566,19 @@ function user($user, $p){
 }
 
 function who($user, $p){
-    
+    if($this->channelExists($p)){
+        $channel = $this->_channels[$p];
+        foreach($channel->users as $id=>$m){
+            $u = $this->_clients[$id];
+            $m = str_replace('@@','@', $m);
+            $user->send(":{$this->servname} 352 {$user->nick} {$p} {$u->username} {$u->address} {$this->servname} {$u->nick} H{$m} :0 {$u->realname}");
+        }
+    } elseif($this->nickInUse($p)) {
+        
+    } elseif(empty($p)){
+        
+    }
+    $user->send(":{$this->servname} 315 {$user->nick} $p :End of /WHO list.");
 }
 
 //net methods

@@ -3,7 +3,8 @@
 class user {
 
 var $nick = NULL;
-var $real;
+var $username;
+var $realname;
 var $prefix;
 var $ip;
 var $address;
