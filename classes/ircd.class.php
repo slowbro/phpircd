@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.03";
+var $version = "phpircd0.4.04";
 var $config;
 var $address;
 var $port;
@@ -248,6 +248,8 @@ function join($user, $p=""){
             $this->error(403, $user, $chan);
             continue;
         }
+        if(array_search($chan, $user->channels) !== FALSE)
+            return;
         if(array_key_exists($chan, $this->_channels) === FALSE){
             $nchan = new Channel($this->channel_num++, $chan);
             $nchan->addUser($user, "@@");
@@ -574,9 +576,20 @@ function who($user, $p){
             $user->send(":{$this->servname} 352 {$user->nick} {$p} {$u->username} {$u->address} {$this->servname} {$u->nick} H{$m} :0 {$u->realname}");
         }
     } elseif($this->nickInUse($p)) {
-        
+        $u = $this->getUserByNick($p);
+        $channel = $this->_channels[current($u->channels)];
+        $m = str_replace('@@','@', $channel->users[$u->id]);
+        $user->send(":{$this->servname} 352 {$user->nick} {$channel->name} {$u->username} {$u->address} {$this->servname} {$u->nick} H{$m} :0 {$u->realname}");
     } elseif(empty($p)){
-        
+        $p = '*';
+        foreach($user->channels as $c){
+            $channel = $this->_channels[$c];
+            foreach($channel->users as $id=>$m){
+                $u = $this->_clients[$id];
+                $m = str_replace('@@','@', $m);
+                $user->send(":{$this->servname} 352 {$user->nick} {$channel->name} {$u->username} {$u->address} {$this->servname} {$u->nick} H{$m} :0 {$u->realname}");
+            }
+        } 
     }
     $user->send(":{$this->servname} 315 {$user->nick} $p :End of /WHO list.");
 }
@@ -671,17 +684,6 @@ function createSocket($ip, $port, $ssl=false){
         if(!$s)
             die("Could not bind socket: ".$errstr."\n");
         $this->_sockets[] = $s;
-/*        $s = socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
-        $this->_sockets[] = $s;
-        if(!socket_set_option($s, SOL_SOCKET, SO_REUSEADDR, 1))
-            die(socket_strerror(socket_last_error($si))."\n");
-        if(@!socket_bind($s,$ip,$port))
-            if(socket_last_error($s) == -10001)
-                @socket_bind($s,"::ffff:".$ip,$port) or die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
-            else
-                die("Could not bind socket: ".socket_strerror(socket_last_error($s))."\n");
-        socket_listen($s);
-        #socket_set_nonblock($s);*/
     }
 }
 
