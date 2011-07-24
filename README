@@ -1,7 +1,7 @@
 phpircd v0.4.04
 this readme is a changelog lololol
 
-7/23/2011 -
+7/24/2011 -
 * Half of MODE works- at least the mode-setting part. Only for channels, too.
 * WHO now works.
 * Fixed bug where users attempting to join a channel they were already joined to was not ignored.
