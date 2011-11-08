@@ -34,6 +34,13 @@ function addChannel($chan){
     $this->channels[] = $chan->name;
 }
 
+function diconnect(){
+    global $ircd;
+    fclose($this->socket);
+    unset($ircd->_clients[$this->id]);
+    unset($this);
+}
+
 function removeChannel($chan){
     if(($k = array_search($chan->name, $this->channels)) !== FALSE)
         unset($this->channels[$k]);

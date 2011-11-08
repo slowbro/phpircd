@@ -528,12 +528,15 @@ function protoctl($user, $p){
 }
 
 function quit($user, $p="Quit: Leaving"){
+    if(strpos($p, ":") === 0)
+        $p = substr($p, 1);
     foreach(@$user->channels as $chan){
         $this->_channels[$chan]->send(":{$user->prefix} QUIT :$p");
         $this->_channels[$chan]->removeUser($user);
     }
     $user->send("ERROR: Closing Link: {$user->nick}[{$user->address}] ($p)");
-    $this->close($user);
+    $user->writeBuffer();
+    $user->diconnect();
 }
 
 function topic($user, $p){
@@ -702,9 +705,9 @@ function write($sock, $data){
 
 function close($user, $sock="legacy"){
     if(is_resource($user)){
-        socket_close($user);
+        fclose($user);
     } else {
-        @socket_close($user->socket);
+        @fclose($user->socket);
         unset($this->_clients[$user->id]);
     }
 }

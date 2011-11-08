@@ -65,7 +65,10 @@ function setModes($user, $mask){
             if($channelModes[$c]['extra']==true && !isset($parts['0'])){
                 continue;
             } elseif($channelModes[$c]['extra']==true && isset($parts['0'])){
-                $this->modes[$c] = array_shift($parts);
+                if(@$channelModes[$c]['type'] == 'array')
+                    $this->modes[$c][] = array_shift($parts);
+                else
+                    $this->modes[$c] = array_shift($parts);
             } elseif(isset($channelModes[$c])){
                 $this->modes[$c] = NULL;
             } else {
@@ -73,7 +76,13 @@ function setModes($user, $mask){
                 continue;
             }
         } else {
-            unset($this->modes[$c]);
+            if($channelModes[$c]['extra']==true && @$channelModes[$c]['type'] == 'array'){
+                $k = array_search(current($parts), $this->modes[$c]);
+                if($k !== FALSE)
+                    unset($this->modes[$c][$k]);
+            } else {
+                unset($this->modes[$c]);
+            }
         }
         $this->send(":{$user->prefix} MODE $this->name $act$c".(empty($this->modes[$c])?'':' '.$this->modes[$c]));
     }
