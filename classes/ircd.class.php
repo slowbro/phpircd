@@ -269,14 +269,13 @@ function join($user, $p=""){
 
 function lusers($user, $p=""){
     $nick = $user->nick;
-    $lusers = <<<EOM
-:{$this->servname} 251 $nick :There are 2 users and 0 invisible on 1 servers
-:{$this->servname} 252 $nick 0 :operator(s) online
-:{$this->servname} 254 $nick 1 :channels formed
-:{$this->servname} 255 $nick :I have 2 clients and 1 servers
-:{$this->servname} 265 $nick :Current Local Users: 11  Max: 79
-:{$this->servname} 266 $nick :Current Global Users: 113  Max: 130469
-EOM;
+    $lusers = "\
+:{$this->servname} 251 $nick :There are ".count($this->_clients)." users and 0 invisible on 1 servers
+:{$this->servname} 252 $nick ".count($this->operList())." :operator(s) online
+:{$this->servname} 254 $nick ".count($this->_channels)." :channels formed
+:{$this->servname} 255 $nick :I have ".count($this->_clients)." clients and 1 servers
+:{$this->servname} 265 $nick :Current Local Users: ".count($this->_clients)."  Max: TODO
+:{$this->servname} 266 $nick :Current Global Users: ".count($this->_clients)."  Max: TODO";
     foreach(explode("\n", trim($lusers)) as $s){
         $user->send(trim($s));
     }
@@ -402,7 +401,7 @@ function nick($user, $p){
 }
 
 function oper($user, $p){
-    
+    $user->oper = true;
 }
 
 function part($user, $p){
@@ -775,6 +774,14 @@ function nickInUse($nick){
             return true;
     }
     return false;
+}
+
+function operList(){
+    $opers = array();
+    foreach($this->_clients as $i=>$c)
+        if($c->oper)
+            $opers[] = $i;
+    return $opers;
 }
 
 function stripColon(&$p){

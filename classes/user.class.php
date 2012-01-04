@@ -16,6 +16,7 @@ var $registered = false;
 var $lastping;
 var $lastpong;
 var $ssl = false;
+var $oper = false;
 
 function __construct($sock, $ssl=false){
     $this->socket = $sock;
