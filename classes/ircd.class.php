@@ -534,8 +534,10 @@ function quit($user, $p="Quit: Leaving"){
         $this->_channels[$chan]->send(":{$user->prefix} QUIT :$p");
         $this->_channels[$chan]->removeUser($user);
     }
-    $user->send("ERROR: Closing Link: {$user->nick}[{$user->address}] ($p)");
-    $user->writeBuffer();
+    if($p !== false){
+        $user->send("ERROR: Closing Link: {$user->nick}[{$user->address}] ($p)");
+        $user->writeBuffer();
+    }
     $user->diconnect();
 }
 

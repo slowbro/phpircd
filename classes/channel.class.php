@@ -25,9 +25,12 @@ function addUser($user, $mode=''){
 }
 
 function getModes(){
+    global $channelModes;
     $modes = '+';
     $extra = array();
     foreach($this->modes as $m=>$e){
+        if(@$channelModes[$m]['type'] == 'array')
+            continue;
         $modes .= "$m";
         if(!empty($e))
             $extra[] = $e;
@@ -62,11 +65,11 @@ function setModes($user, $mask){
             continue;
         }
         if($act == '+'){
-            if($channelModes[$c]['extra']==true && !isset($parts['0'])){
+            if(@$channelModes[$c]['extra']==true && !isset($parts['0'])){
                 continue;
-            } elseif($channelModes[$c]['extra']==true && isset($parts['0'])){
+            } elseif(@$channelModes[$c]['extra']==true && isset($parts['0'])){
                 if(@$channelModes[$c]['type'] == 'array')
-                    $this->modes[$c][] = array_shift($parts);
+                    $tact = $this->modes[$c][] = array_shift($parts);
                 else
                     $this->modes[$c] = array_shift($parts);
             } elseif(isset($channelModes[$c])){
@@ -84,7 +87,7 @@ function setModes($user, $mask){
                 unset($this->modes[$c]);
             }
         }
-        $this->send(":{$user->prefix} MODE $this->name $act$c".(empty($this->modes[$c])?'':' '.$this->modes[$c]));
+        $this->send(":{$user->prefix} MODE $this->name $act$c".(empty($this->modes[$c])?'':' '.(@$channelModes[$c]['type'] == 'array'?$tact:$this->modes[$c])));
     }
 }
 
