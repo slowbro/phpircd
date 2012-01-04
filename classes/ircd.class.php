@@ -269,13 +269,14 @@ function join($user, $p=""){
 
 function lusers($user, $p=""){
     $nick = $user->nick;
+    $users = count($this->_clients);
     $lusers = "\
-:{$this->servname} 251 $nick :There are ".count($this->_clients)." users and 0 invisible on 1 servers
+:{$this->servname} 251 $nick :There are $users users and 0 invisible on 1 servers
 :{$this->servname} 252 $nick ".count($this->operList())." :operator(s) online
 :{$this->servname} 254 $nick ".count($this->_channels)." :channels formed
-:{$this->servname} 255 $nick :I have ".count($this->_clients)." clients and 1 servers
-:{$this->servname} 265 $nick :Current Local Users: ".count($this->_clients)."  Max: TODO
-:{$this->servname} 266 $nick :Current Global Users: ".count($this->_clients)."  Max: TODO";
+:{$this->servname} 255 $nick :I have $users clients and 1 servers
+:{$this->servname} 265 $nick :Current Local Users: $users  Max: TODO
+:{$this->servname} 266 $nick :Current Global Users: $users  Max: TODO";
     foreach(explode("\n", trim($lusers)) as $s){
         $user->send(trim($s));
     }
