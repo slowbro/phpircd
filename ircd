@@ -32,6 +32,15 @@ while(true){
         $buf = $ircd->read($value);
         if(false !== $buf){
             if(!empty($buf)){
+                if(strpos($buf, "\n") === FALSE){
+                    $user->readBuffer[] = $buf;
+                    unset($reads[$key]);
+                    continue;
+                }
+                if(count($user->readBuffer) != 0){
+                    $buf = implode('', $user->readBuffer).$buf;
+                    $user->readBuffer = array();
+                }
                 $data = trim($buf);
                 $data = explode("\n", str_replace("\r","\n", $data));
                 foreach($data as $d){

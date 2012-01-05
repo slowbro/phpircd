@@ -17,6 +17,8 @@ var $lastping;
 var $lastpong;
 var $ssl = false;
 var $oper = false;
+var $buffer = array();
+var $readBuffer = array();
 
 function __construct($sock, $ssl=false){
     $this->socket = $sock;

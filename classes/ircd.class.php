@@ -666,9 +666,9 @@ function accept($socket, $ssl=false){
 }
 
 function createSocket($ip, $port, $ssl=false){
+    if(!preg_match("/$[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}^/", $ip))
+        $ip = '['.$ip.']';
     if($ssl){
-        if(!preg_match("/$[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}^/", $ip))
-            $ip = '['.$ip.']';
         $arr = array('ssl'=>
             array(
                 'local_cert'=>'cert.pem',
@@ -683,8 +683,6 @@ function createSocket($ip, $port, $ssl=false){
             die("Could not bind socket: ".$errstr."\n");
         $this->_ssl_sockets[] = $s;
     } else { 
-        if(!preg_match("/$[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}^/", $ip))
-            $ip = '['.$ip.']';
         $s = stream_socket_server("tcp://$ip:$port", $errno, $errstr, STREAM_SERVER_LISTEN|STREAM_SERVER_BIND);
         if(!$s)
             die("Could not bind socket: ".$errstr."\n");
