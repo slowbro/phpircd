@@ -1,5 +1,15 @@
-phpircd v0.4.04
+phpircd v0.4.07
 this readme is a changelog lololol
+
+1/04-05/2012 -
+* Fixed MODE #channel outputting array modes.
+* LUSERS not reports half-decent information
+* Fixed issue #2. The server now doesn't assume line-buffering on the client side.
+* Added User::readBuffer
+
+11/08/2011 -
+* Fixed user disconnect- using socket function on a stream.
+* Fixed user QUIT not being acknowledged due to not calling User::writeBuffer() before disconnect.
 
 7/24/2011 -
 * Half of MODE works- at least the mode-setting part. Only for channels, too.

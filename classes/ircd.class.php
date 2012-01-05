@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.04";
+var $version = "phpircd0.4.07";
 var $config;
 var $address;
 var $port;
