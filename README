@@ -1,7 +1,21 @@
-phpircd v0.4.07
+phpircd v0.4.08
 this readme is a changelog lololol
 
-1/04-05/2012 -
+01/08/2012 -
+* Condense user and channel modes into one file.
+* Add new Mode class.
+* Add hookpoints for 'connect', 'privmsg', and 'join'.
+* Made +m, +R, and +v channel modes, as well as +z user mode, work-ish.
+* Fixed mis-spelling of User::disconnect() (was User::diconnect()).
+* Fixed ircd::$rnRegex to include the period as an allowed character.
+* Added User::hasMode()
+* Added testing User::setMode(). Will be fixed in a future push.
+* Fixed LUSERS issues.
+* Added $override arg to ircd::error() to override messages.
+* Fixed (read: silenced) some complaining in Channel::setMode() when un-setting modes.
+* Thanks to PwnFlakes for the help testing.
+
+01/04-05/2012 -
 * Fixed MODE #channel outputting array modes.
 * LUSERS not reports half-decent information
 * Fixed issue #2. The server now doesn't assume line-buffering on the client side.
