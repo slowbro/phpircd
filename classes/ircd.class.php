@@ -16,7 +16,7 @@ var $servname;
 var $network;
 var $allowed = array("join","part","lusers","mode","motd","names","nick","oper","ping","pong","privmsg","quit","topic","protoctl","user","who");
 var $nickRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\}]{1}[a-zA-Z0-9\[\]\\|^\`_\{\}]{0,}\$/";
-var $rnRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\} ]{1}[a-zA-Z0-9\[\]\\|^\`_\{\} ]{0,}\$/";
+var $rnRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\} \.]{1}[a-zA-Z0-9\[\]\\|^\`_\{\} \.]{0,}\$/";
 
 function newConnection($in, $user){
     $e = explode(" ", $in);
@@ -139,7 +139,7 @@ function process($in, $user){
     }
 }
 
-function error($numeric, $user, $extra=""){
+function error($numeric, $user, $extra="", $override=false){
     $target = (empty($user->nick)?"*":$user->nick);
     $prefix = ":".$this->servname." ".$numeric." ".$target." ";
     switch($numeric){
@@ -153,7 +153,7 @@ function error($numeric, $user, $extra=""){
     $message = "$extra :No such channel.";
     break;
     case 404:
-    $message = "$extra :Can not send to channel.";
+    $message = "$extra ".(!$override?":Cannot send to channel.":$override);
     break;
     case 405:
     $message = "$extra :You have joined too many channels.";
@@ -215,11 +215,12 @@ function welcome($user){
     $user->send(":{$this->servname} 001 {$user->nick} :Welcome to the {$this->network} IRC network, {$user->prefix}");
     $user->send(":{$this->servname} 002 {$user->nick} :Your host is {$this->servname}, running {$this->version}");
     $user->send(":{$this->servname} 003 {$user->nick} :This server was created {$this->createdate}");
-    $user->send(":{$this->servname} 004 {$user->nick} {$this->servname} {$this->version} iowghraAsORTVSxNCWqBzvdHtGp lvhopsmntikrRcaqOALQbSeIKVfMCuzNTGj");
+    $user->send(":{$this->servname} 004 {$user->nick} {$this->servname} {$this->version} iowghraAsORTVSxNCWqBzvdHtGp ".implode(array_keys($this->chanModes)));
     $_005 = "";
     $user->send(":{$this->servname} 005 {$user->nick} CHANTYPES={$this->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$this->config['me']['network']} :are supported by this server");
     $this->lusers($user);
     $this->motd($user);
+    $this->runUserHooks('connect', $user);
 }
 
 function join($user, $p=""){
@@ -252,12 +253,20 @@ function join($user, $p=""){
             return;
         if(array_key_exists($chan, $this->_channels) === FALSE){
             $nchan = new Channel($this->channel_num++, $chan);
+            if(!$this->runChannelHooks('join', $user, $nchan, $errno, $errstr)){
+                $this->error($errno, $user, $chan, $errstr);
+                return false;
+            }
             $nchan->addUser($user, "@@");
             $nchan->setTopic($user, "default topic!");
             $this->_channels[$nchan->name] = $nchan;
             $user->addChannel($nchan);
             $user->send(":{$user->prefix} JOIN $chan");
         } else {
+            if(!$this->runChannelHooks('join', $user, $this->_channels[$chan], $errno, $errstr)){
+                $this->error($errno, $user, $chan, $errstr);
+                return false;
+            }
             $this->_channels[$chan]->addUser($user);
             $user->addChannel($this->_channels[$chan]);
             $this->_channels[$chan]->send(":{$user->prefix} JOIN $chan");
@@ -270,13 +279,12 @@ function join($user, $p=""){
 function lusers($user, $p=""){
     $nick = $user->nick;
     $users = count($this->_clients);
-    $lusers = "\
-:{$this->servname} 251 $nick :There are $users users and 0 invisible on 1 servers
-:{$this->servname} 252 $nick ".count($this->operList())." :operator(s) online
-:{$this->servname} 254 $nick ".count($this->_channels)." :channels formed
-:{$this->servname} 255 $nick :I have $users clients and 1 servers
-:{$this->servname} 265 $nick :Current Local Users: $users  Max: TODO
-:{$this->servname} 266 $nick :Current Global Users: $users  Max: TODO";
+    $lusers = ":{$this->servname} 251 $nick :There are $users users and 0 invisible on 1 servers\n".
+              ":{$this->servname} 252 $nick ".count($this->operList())." :operator(s) online\n".
+              ":{$this->servname} 254 $nick ".count($this->_channels)." :channels formed\n".
+              ":{$this->servname} 255 $nick :I have $users clients and 1 servers\n".
+              ":{$this->servname} 265 $nick :Current Local Users: $users  Max: TODO\n".
+              ":{$this->servname} 266 $nick :Current Global Users: $users  Max: TODO";
     foreach(explode("\n", trim($lusers)) as $s){
         $user->send(trim($s));
     }
@@ -500,6 +508,10 @@ function privmsg($user, $p){
             $this->error(404, $user, $target);
             return;
         }
+        if(!$this->runChannelHooks('privmsg', $user, $this->_channels[$target], $errno, $errstr)){
+            $this->error($errno, $user, $target, $errstr);
+            return false;
+        }
         $message = substr($p, strlen($target)+1);
         $message = ($message[0] == ":"?substr($message, 1):$message);
         //send to whole channel minus yourself
@@ -512,7 +524,6 @@ function privmsg($user, $p){
         }
         $message = substr($p, strlen($target)+1);
         $message = ($message[0] == ":"?substr($message, 1):$message);
-        var_dump($tuser);
         $tuser->send(":".$user->prefix." PRIVMSG ".$target." :$message");
     }
 }
@@ -538,7 +549,7 @@ function quit($user, $p="Quit: Leaving"){
         $user->send("ERROR: Closing Link: {$user->nick}[{$user->address}] ($p)");
         $user->writeBuffer();
     }
-    $user->diconnect();
+    $user->disconnect();
 }
 
 function topic($user, $p){
@@ -605,9 +616,12 @@ function __construct($config){
     $this->config = parse_ini_file($config, true);
     if(!$this->config)
         die("Config file parse failed: check your syntax!");
+    require("include/modes.php");
     $this->servname   = $this->config['me']['servername'];
     $this->network    = $this->config['me']['network'];
     $this->createdate = $this->config['me']['created'];
+    $this->chanModes  = $channelModes;
+    $this->userModes  = $userModes;
     $listens = (empty($this->config['core']['listen'])?array():explode(',', $this->config['core']['listen']));
     foreach($listens as $l){
         $this->debug("bind to address $l");
@@ -781,6 +795,21 @@ function operList(){
         if($c->oper)
             $opers[] = $i;
     return $opers;
+}
+
+function runUserHooks($hook, $user=false, $channel=false){
+    foreach($this->userModes as $m)
+        if(isset($m->hooks[$hook]))
+            if(!$m->hooks[$hook]($user, $channel, $errno, $errstr))
+                return false;
+    return true;
+}
+function runChannelHooks($hook, $user=false, $channel=false, &$errno, &$errstr){
+    foreach($this->chanModes as $m)
+        if(isset($m->hooks[$hook]))
+            if(!$m->hooks[$hook]($user, $channel, $errno, $errstr))
+                return false;
+    return true;
 }
 
 function stripColon(&$p){

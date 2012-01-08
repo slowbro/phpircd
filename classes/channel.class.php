@@ -25,17 +25,25 @@ function addUser($user, $mode=''){
 }
 
 function getModes(){
-    global $channelModes;
+    global $ircd;
     $modes = '+';
     $extra = array();
     foreach($this->modes as $m=>$e){
-        if(@$channelModes[$m]['type'] == 'array')
+        if(is_array($e))
             continue;
         $modes .= "$m";
-        if(!empty($e))
-            $extra[] = $e;
     }
     return $modes.' '.implode(' ', $extra);
+}
+
+function hasMode($m, $t=false){
+    global $ircd;
+    if(isset($this->modes[$m]))
+        if($ircd->chanModes[$m]->type == 'array')
+            return in_array($t, $this->modes[$m]);
+        else
+            return true;
+    return false;
 }
 
 function removeUser($user){
@@ -54,7 +62,7 @@ function send($msg, $excl=""){
 }
 
 function setModes($user, $mask){
-    global $ircd, $channelModes;
+    global $ircd;
     $parts = explode(" ", $mask);
     $mask = str_split($parts['0']);
     array_shift($parts);
@@ -65,21 +73,21 @@ function setModes($user, $mask){
             continue;
         }
         if($act == '+'){
-            if(@$channelModes[$c]['extra']==true && !isset($parts['0'])){
+            if(@$ircd->chanModes[$c]->extra==true && !isset($parts['0'])){
                 continue;
-            } elseif(@$channelModes[$c]['extra']==true && isset($parts['0'])){
-                if(@$channelModes[$c]['type'] == 'array')
+            } elseif(@$ircd->chanModes[$c]->extra==true && isset($parts['0'])){
+                if(@$ircd->chanModes[$c]->type == 'array')
                     $tact = $this->modes[$c][] = array_shift($parts);
                 else
                     $this->modes[$c] = array_shift($parts);
-            } elseif(isset($channelModes[$c])){
-                $this->modes[$c] = NULL;
+            } elseif(isset($ircd->chanModes[$c])){
+                $this->modes[$c] = true;
             } else {
                 $ircd->error(461,$user,'MODE');
                 continue;
             }
         } else {
-            if($channelModes[$c]['extra']==true && @$channelModes[$c]['type'] == 'array'){
+            if($ircd->chanModes[$c]->extra==true && @$ircd->chanModes[$c]->type == 'array'){
                 $k = array_search(current($parts), $this->modes[$c]);
                 if($k !== FALSE)
                     unset($this->modes[$c][$k]);
@@ -87,7 +95,7 @@ function setModes($user, $mask){
                 unset($this->modes[$c]);
             }
         }
-        $this->send(":{$user->prefix} MODE $this->name $act$c".(empty($this->modes[$c])?'':' '.(@$channelModes[$c]['type'] == 'array'?$tact:$this->modes[$c])));
+        $this->send(":{$user->prefix} MODE $this->name $act$c".(!is_array(@$this->modes[$c])?'':' '.(@$ircd->chanModes[$c]->type == 'array'?$tact:@$this->modes[$c])));
     }
 }
 

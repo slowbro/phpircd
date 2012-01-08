@@ -1,9 +1,9 @@
 #!/usr/bin/php -q
 <?php
-require("include/channelmodes.php");
 require("classes/ircd.class.php");
 require("classes/user.class.php");
 require("classes/channel.class.php");
+require("classes/mode.class.php");
 $ircd = new ircd('config.ini');
 while(true){
     //select-loop for server AND client sockets

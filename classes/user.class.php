@@ -19,6 +19,7 @@ var $ssl = false;
 var $oper = false;
 var $buffer = array();
 var $readBuffer = array();
+var $modes = array();
 
 function __construct($sock, $ssl=false){
     $this->socket = $sock;
@@ -37,11 +38,21 @@ function addChannel($chan){
     $this->channels[] = $chan->name;
 }
 
-function diconnect(){
+function disconnect(){
     global $ircd;
     fclose($this->socket);
     unset($ircd->_clients[$this->id]);
     unset($this);
+}
+
+function hasMode($m, $t=false){
+    global $ircd;
+    if(isset($this->modes[$m]))
+        if($ircd->userModes[$m]->type == 'array')
+            return in_array($t, $this->modes[$m]);
+        else
+            return true;
+    return false;
 }
 
 function removeChannel($chan){
@@ -51,6 +62,11 @@ function removeChannel($chan){
 
 function send($msg){
     $this->buffer[] = $msg;
+}
+
+function setMode($m){
+    $this->modes[$m] = true;
+    $this->send(":{$this->nick} MODE {$this->nick} :+$m");
 }
 
 function writeBuffer(){
