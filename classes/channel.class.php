@@ -20,8 +20,10 @@ function __construct($id, $name){
     $this->created = time();
 }
 
-function addUser($user, $mode=''){
-    $this->users[$user->id] = $mode;
+function addUser($user, $mode=false){
+    $this->users[$user->id] = true;
+    if($mode)
+        $this->setModes($user, '+'.$mode." {$user->nick}");
 }
 
 function getModes(){
@@ -36,6 +38,22 @@ function getModes(){
     return $modes.' '.implode(' ', $extra);
 }
 
+function getUserPrefix($user){
+    if(in_array($user->nick, @$this->modes['q']))
+        return '~';
+    if(in_array($user->nick, @$this->modes['a']))
+        return '&';
+    if(in_array($user->nick, @$this->modes['O']))
+        return '@@';
+    if(in_array($user->nick, @$this->modes['o']))
+        return '@';
+    if(in_array($user->nick, @$this->modes['h']))
+        return '%';
+    if(in_array($user->nick, @$this->modes['v']))
+        return '+';
+    return '';
+}
+
 function hasMode($m, $t=false){
     global $ircd;
     if(isset($this->modes[$m]))
@@ -44,6 +62,38 @@ function hasMode($m, $t=false){
         else
             return true;
     return false;
+}
+
+function hasVoice($user){
+    return ($this->hasMode('v', $user->nick) || $this->isOwner($user) || $this->isAop($user) || $this->isOp($user) || $this->isHop($user));
+}
+
+function isAop($user){
+    return ($this->hasMode('a', $user->nick) || $this->isOwner($user));
+}
+
+function isBanned($user){
+    return false;
+}
+
+function isHop($user){
+    return $this->hasMode('h', $user->nick);
+}
+
+function isOp($user){
+    return ($this->hasMode('o', $user->nick) || $this->hasMode('O', $user->nick) || $this->isAop($user) || $this->isOwner($user));
+}
+
+function isOwner($user){
+    return $this->hasMode('q', $user->nick);
+}
+
+function nick($user, $oldnick){
+    var_dump($this->modes);
+    foreach($this->modes as &$m)
+        if(is_array($m))
+            foreach($m as &$n)
+                $n = ($n == $oldnick?$user->nick:$n);
 }
 
 function removeUser($user){
@@ -72,6 +122,10 @@ function setModes($user, $mask){
             $act = $c;
             continue;
         }
+        if(!array_key_exists($c, $ircd->chanModes)){
+            $ircd->error(472, $user, $c);
+            continue;
+        }   
         if($act == '+'){
             if(@$ircd->chanModes[$c]->extra==true && !isset($parts['0'])){
                 continue;

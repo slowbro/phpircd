@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.08";
+var $version = "phpircd0.4.09";
 var $config;
 var $address;
 var $port;
@@ -257,7 +257,7 @@ function join($user, $p=""){
                 $this->error($errno, $user, $chan, $errstr);
                 return false;
             }
-            $nchan->addUser($user, "@@");
+            $nchan->addUser($user, "O");
             $nchan->setTopic($user, "default topic!");
             $this->_channels[$nchan->name] = $nchan;
             $user->addChannel($nchan);
@@ -346,7 +346,8 @@ function names($user, $p){
         $chan = $this->_channels[$p['0']];
         $names = $chan->users;
         foreach($names as $k => $v){
-                $names[$k] = str_replace("@@", "@", $v).$this->_clients[$k]->nick;
+                $pfx = $chan->getUserPrefix($user);
+                $names[$k] = str_replace("@@", "@", $pfx).$this->_clients[$k]->nick;
         }
         if(!$user->namesx){
         
@@ -398,11 +399,14 @@ function nick($user, $p){
     if($this->checkNick($p)){
         $p = substr($p, 0, $this->config['ircd']['nicklen']);
         $user->send(":{$user->prefix} NICK $p");
-        $user->nick = $p;
         $oldprefix = $user->prefix;
+        $oldnick = $user->nick;
+        $user->nick = $p;
         $user->prefix = $user->nick."!".$user->username."@".$user->address;
         foreach($user->channels as $chan){
-                $this->_channels[$chan]->send(":{$oldprefix} NICK $p", $user);
+                $c = $this->_channels[$chan];
+                $c->nick($user, $oldnick);
+                $c->send(":{$oldprefix} NICK $p", $user);
         }
     } else {
         $this->error('432', $user, $p.":"."Illegal characters.");

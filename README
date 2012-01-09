@@ -1,5 +1,14 @@
-phpircd v0.4.08
+phpircd v0.4.09
 this readme is a changelog lololol
+
+01/09/2012 -
+* Slowly working on converting modes to class format
+* Added channel::is[Owner|Aop|Op|Hop](), channel::hasVoice(), channel::getUserPrefix()
+* Prefix is no longer stored in channel::$users, and is instead calculated by channel::getUserPrefix()
+* Made channel modes +qaohbvz work-ish.
+* Added channel::isBanned() debug shell function.
+* Added channel:nick() to update nicks in any array modes like +qaohv.
+* Added checking for unknown mode chars.
 
 01/08/2012 -
 * Condense user and channel modes into one file.
