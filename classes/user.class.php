@@ -58,7 +58,9 @@ function hasMode($m, $t=false){
 function maskHost(){
     global $ircd;
     $address = explode('.',$this->address);
-    $address['0'] = $ircd->config['ircd']['hostmask_prefix'].'-'.strtoupper(substr(hash('sha512', $address['0']), 0, 10));
+    $address['0'] = $ircd->config['ircd']['hostmask_prefix'].
+                    '-'.
+                    strtoupper(substr(hash('sha512', $ircd->config['ircd']['hostmask_secret'].$address['0']), 0, $ircd->config['ircd']['hostmask_length']));
     $this->prefix = $this->nick."!".$this->username."@".implode('.', $address);
     $this->setMode("x");
 }
