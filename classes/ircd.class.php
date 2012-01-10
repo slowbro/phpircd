@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.09";
+var $version = "phpircd0.4.10";
 var $config;
 var $address;
 var $port;
@@ -207,6 +207,12 @@ function error($numeric, $user, $extra="", $override=false){
     break;
     case '472':
     $message = "$extra :is unknown mode char to me";
+    break;
+    case '482':
+    $message = ":You do not have the proper channel privileges to do that.".(isset($extra)?" ($extra)":"");
+    break;
+    case '485':
+    $message = ":You are not the channel owner.";
     }
     $user->send($prefix.$message);
 }
@@ -220,7 +226,8 @@ function welcome($user){
     $user->send(":{$this->servname} 005 {$user->nick} CHANTYPES={$this->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$this->config['me']['network']} :are supported by this server");
     $this->lusers($user);
     $this->motd($user);
-    $this->runUserHooks('connect', $user);
+    $d = array('user'=>&$user);
+    $this->runUserHooks('connect', $d);
 }
 
 function join($user, $p=""){
@@ -253,18 +260,20 @@ function join($user, $p=""){
             return;
         if(array_key_exists($chan, $this->_channels) === FALSE){
             $nchan = new Channel($this->channel_num++, $chan);
-            if(!$this->runChannelHooks('join', $user, $nchan, $errno, $errstr)){
-                $this->error($errno, $user, $chan, $errstr);
+            $d = array('user'=>&$user, 'chan'=>&$nchan);
+            if(!$this->runChannelHooks('join', $d)){
+                $this->error($d['errno'], $user, $chan, $d['errstr']);
                 return false;
             }
             $nchan->addUser($user, "O");
             $nchan->setTopic($user, "default topic!");
             $this->_channels[$nchan->name] = $nchan;
-            $user->addChannel($nchan);
             $user->send(":{$user->prefix} JOIN $chan");
+            $user->addChannel($nchan);
         } else {
-            if(!$this->runChannelHooks('join', $user, $this->_channels[$chan], $errno, $errstr)){
-                $this->error($errno, $user, $chan, $errstr);
+            $d = array('user'=>&$user, 'chan'=>&$this->_channels[$chan]);
+            if(!$this->runChannelHooks('join', $d)){
+                $this->error($d['errno'], $user, $chan, $d['errstr']);
                 return false;
             }
             $this->_channels[$chan]->addUser($user);
@@ -512,8 +521,9 @@ function privmsg($user, $p){
             $this->error(404, $user, $target);
             return;
         }
-        if(!$this->runChannelHooks('privmsg', $user, $this->_channels[$target], $errno, $errstr)){
-            $this->error($errno, $user, $target, $errstr);
+        $d = array('user'=>&$user, 'chan'=>&$this->_channels[$target]);
+        if(!$this->runChannelHooks('privmsg', $d)){
+            $this->error($d['errno'], $user, $target, $d['errstr']);
             return false;
         }
         $message = substr($p, strlen($target)+1);
@@ -801,17 +811,17 @@ function operList(){
     return $opers;
 }
 
-function runUserHooks($hook, $user=false, $channel=false){
+function runUserHooks($hook, &$data){
     foreach($this->userModes as $m)
         if(isset($m->hooks[$hook]))
-            if(!$m->hooks[$hook]($user, $channel, $errno, $errstr))
+            if(!$m->hooks[$hook](&$data))
                 return false;
     return true;
 }
-function runChannelHooks($hook, $user=false, $channel=false, &$errno, &$errstr){
+function runChannelHooks($hook, &$data){
     foreach($this->chanModes as $m)
         if(isset($m->hooks[$hook]))
-            if(!$m->hooks[$hook]($user, $channel, $errno, $errstr))
+            if(!$m->hooks[$hook](&$data))
                 return false;
     return true;
 }

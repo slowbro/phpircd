@@ -14,9 +14,9 @@ $userModes = array(
         'extra' => false
     ),*/
     'z' => new Mode('z','user','bool',false, array(
-            'connect' => function(&$user){
-                if($user->ssl)
-                    $user->setMode('z');
+            'connect' => function(&$d){
+                if($d['user']->ssl)
+                    $d['user']->setMode('z');
             }
     ))
 );
@@ -25,10 +25,10 @@ $channelModes = array(
     'a' => new Mode('a','channel','array',true),
     'A' => array(),
     'b' => new Mode('b','channel','array',true, array(
-            'join'=> function(&$u, &$c, &$en, &$es){
-                $en = 404;
-                $es = ": You are banned (+b) ({$c->name})";
-                if($c->isBanned($u))
+            'join'=> function(&$d){
+                $d['errno'] = 404;
+                $d['errstr'] = ": You are banned (+b) ({$d['chan']->name})";
+                if($d['chan']->isBanned($d['user']))
                     return false;
                 return true;
             }
@@ -62,11 +62,11 @@ $channelModes = array(
         'extra'=>true
     ),
     'm' => new Mode('m','channel','bool',false, array(
-            'privmsg' => function(&$u, &$c, &$en, &$es){
-                $en = 404;
-                $es = ":You need voice (+v) ($c->name)";
-                if($c->hasMode('m'))
-                    if(!$c->hasVoice($u))
+            'privmsg' => function(&$d){
+                $d['errno'] = 404;
+                $d['errstr'] = ":You need voice (+v) ({$d['chan']->name})";
+                if($d['chan']->hasMode('m'))
+                    if(!$d['chan']->hasVoice($d['user']))
                         return false;
                 return true;
             }
@@ -81,10 +81,10 @@ $channelModes = array(
     'Q' => array(),
     'r' => array(),
     'R' => new Mode('R','channel','bool',false, array(
-            'join' => function(&$u, &$c, &$en, &$es){
-                $en = 404;
-                $es = ":You must be registered with services to join (+r)";
-                if($c->hasMode('R') && !$u->hasMode('r'))
+            'join' => function(&$d){
+                $d['errno'] = 404;
+                $d['errstr'] = ":You must be registered with services to join (+r)";
+                if($d['chan']->hasMode('R') && !$d['user']->hasMode('r'))
                         return false;
                 return true;
             }
@@ -92,21 +92,52 @@ $channelModes = array(
     's' => array(),
     'S' => array(),
     't' => array(),
-    'v' => new Mode('v','channel','array', true),
+    'v' => new Mode('v','channel','array', true, array(
+            'set' => function(&$d){
+                $d['errstr'] = "-v";
+                $d['errno'] = 482;
+                if(!$d['chan']->isOp($d['user']))
+                    return false;
+                $d['errno'] = 431;
+                if(!isset($d['extra']))
+                    return false;
+                $d['errstr'] = $d['extra'];
+                $d['errno'] = 401;
+                if(!$d['chan']->userInChan($d['extra']))
+                    return false;
+                return true;
+            },
+            'unset' => function(&$d){
+                $d['errstr'] = "-v";
+                if($d['user']->nick == $d['extra'])
+                    return true;
+                $d['errno'] = 482;
+                if(!$d['chan']->isOp($d['user']))
+                    return false;
+                $d['errno'] = 431;
+                if(!isset($d['extra']))
+                    return false;
+                $d['errstr'] = $d['extra'];
+                $d['errno'] = 401;
+                if(!$d['chan']->userInChan($d['extra']))
+                    return false;
+                return true;
+            }
+        )),
     'V' => new Mode('V','channel','bool', false, array(
-            'invite' => function(&$u, &$c, &$en, &$es){
-                $en = 0;
-                $es = false;
-                if($c->hasMode('V') && !$c->isOp($u))
+            'invite' => function(&$d){
+                $d['errno'] = 0;
+                $d['errstr'] = false;
+                if($d['chan']->hasMode('V') && !$d['chan']->isOp($d['user']))
                     return false;
                 return true;
             }
         )),
     'z' => new Mode('z','channel','bool', false, array(
-            'join' => function(&$u, &$c, &$en, &$es){
-                $en = 404;
-                $es = ":You must be connected via SSL to join (+z)";
-                if($c->hasMode('z') && !$u->hasMode('z'))
+            'join' => function(&$d){
+                $d['errno'] = 404;
+                $d['errstr']  = ":You must be connected via SSL to join (+z)";
+                if($d['chan']->hasMode('z') && !$d['user']->hasMode('z'))
                         return false;
                 return true;
             }

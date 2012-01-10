@@ -39,17 +39,17 @@ function getModes(){
 }
 
 function getUserPrefix($user){
-    if(in_array($user->nick, @$this->modes['q']))
+    if(@in_array($user->nick, @$this->modes['q']))
         return '~';
-    if(in_array($user->nick, @$this->modes['a']))
+    if(@in_array($user->nick, @$this->modes['a']))
         return '&';
-    if(in_array($user->nick, @$this->modes['O']))
-        return '@@';
-    if(in_array($user->nick, @$this->modes['o']))
+    if(@in_array($user->nick, @$this->modes['O']))
         return '@';
-    if(in_array($user->nick, @$this->modes['h']))
+    if(@in_array($user->nick, @$this->modes['o']))
+        return '@';
+    if(@in_array($user->nick, @$this->modes['h']))
         return '%';
-    if(in_array($user->nick, @$this->modes['v']))
+    if(@in_array($user->nick, @$this->modes['v']))
         return '+';
     return '';
 }
@@ -89,7 +89,6 @@ function isOwner($user){
 }
 
 function nick($user, $oldnick){
-    var_dump($this->modes);
     foreach($this->modes as &$m)
         if(is_array($m))
             foreach($m as &$n)
@@ -116,7 +115,7 @@ function setModes($user, $mask){
     $parts = explode(" ", $mask);
     $mask = str_split($parts['0']);
     array_shift($parts);
-    $act = "";
+    $act = $add = $take = $extra = "";
     foreach($mask as $c){
         if($c == '+' || $c == '-'){
             $act = $c;
@@ -129,34 +128,69 @@ function setModes($user, $mask){
         if($act == '+'){
             if(@$ircd->chanModes[$c]->extra==true && !isset($parts['0'])){
                 continue;
-            } elseif(@$ircd->chanModes[$c]->extra==true && isset($parts['0'])){
-                if(@$ircd->chanModes[$c]->type == 'array')
-                    $tact = $this->modes[$c][] = array_shift($parts);
-                else
-                    $this->modes[$c] = array_shift($parts);
+            }
+            if(isset($ircd->chanModes[$c]->hooks['set'])){
+                $d = array('user'=>&$user, 'chan'=>&$this, 'extra'=>@$parts['0']);
+                if(!$ircd->chanModes[$c]->hooks['set'](&$d)){
+                    $ircd->error($d['errno'], $user, @$d['errstr']);
+                    continue;
+                }
+            }
+            if(@$ircd->chanModes[$c]->extra==true && isset($parts['0'])){
+                if(@$ircd->chanModes[$c]->type == 'array'){
+                    $as = array_shift($parts);
+                    $extra .= ' '.$as;
+                    $this->modes[$c][] = $as;
+                    $add .= $c;
+                } else {
+                    $as = array_shift($parts);
+                    $extra .= $as;
+                    $this->modes[$c] = $as;
+                    $add .= $c;
+                }
             } elseif(isset($ircd->chanModes[$c])){
                 $this->modes[$c] = true;
-            } else {
-                $ircd->error(461,$user,'MODE');
-                continue;
+                $add .= $c;
             }
         } else {
+            if(isset($ircd->chanModes[$c]->hooks['unset'])){  
+                $d = array('user'=>&$user, 'chan'=>&$this, 'extra'=>@$parts['0']);
+                if(!$ircd->chanModes[$c]->hooks['unset'](&$d)){
+                    $ircd->error($d['errno'], $user, @$d['errstr']);
+                    continue;
+                }
+            }
             if($ircd->chanModes[$c]->extra==true && @$ircd->chanModes[$c]->type == 'array'){
                 $k = array_search(current($parts), $this->modes[$c]);
-                if($k !== FALSE)
+                if($k !== FALSE){
                     unset($this->modes[$c][$k]);
+                    $extra .= ' '.array_shift($parts);
+                    $take .= $c;
+                }
             } else {
                 unset($this->modes[$c]);
+                $take .= $c;
             }
         }
-        $this->send(":{$user->prefix} MODE $this->name $act$c".(!is_array(@$this->modes[$c])?'':' '.(@$ircd->chanModes[$c]->type == 'array'?$tact:@$this->modes[$c])));
     }
+    if($add.$take != "")
+        $this->send(":{$user->prefix} MODE $this->name ".(!empty($add)?"+$add":'').(!empty($take)?"-$take":'').(!empty($extra)?$extra:''));
 }
 
 function setTopic($user, $msg){
     $this->topic = $msg;
     $this->topic_setby = $user->nick;
     $this->topic_seton = time();
+}
+
+function userInChan($nick){
+    global $ircd;
+    $u = $ircd->getUserByNick($nick);
+    if(!$u)
+        return false;
+    if(isset($this->users[$u->id]))
+        return true;
+    return false;
 }
 
 }

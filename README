@@ -1,5 +1,12 @@
-phpircd v0.4.09
+phpircd v0.4.10
 this readme is a changelog lololol
+
+01/10/2012 -
+* Cleaned up channel::setModes() a bit.
+* Added 'set' and 'unset' hookpoints for channel modes.
+* Fixed how modes are announced when doing multiple actions (like +oo-h slo slo2 slo)
+* Changed hook parameters. Now takes one array passed by ref. Can contain 'user','chan','extra' at the moment.
+* Added error code 482, ERR_CHANOPRIVSNEEDED, and 485, ERR_UNIQOPRIVSNEEDED.
 
 01/09/2012 -
 * Slowly working on converting modes to class format
