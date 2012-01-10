@@ -20,7 +20,7 @@ function __construct($id, $name){
     $this->created = time();
 }
 
-function addUser($user, $mode=false){
+function addUser(&$user, $mode=false){
     $this->users[$user->id] = true;
     if($mode)
         $this->setModes($user, '+'.$mode." {$user->nick}");

@@ -8,11 +8,13 @@ $userModes = array(
     'w' => array(
         'type' => 'bool',
         'extra' => false
-    ),
-    'x' => array(
-        'type' => 'bool',
-        'extra' => false
     ),*/
+    'x' => new Mode('x','user','bool',false, array(
+            'connect' => function(&$d){
+                if($d['ircd']->config['ircd']['hostmask'] == "on")
+                    $d['user']->maskHost();
+            }
+    )),
     'z' => new Mode('z','user','bool',false, array(
             'connect' => function(&$d){
                 if($d['user']->ssl)

@@ -226,6 +226,8 @@ function welcome($user){
     $user->send(":{$this->servname} 005 {$user->nick} CHANTYPES={$this->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$this->config['me']['network']} :are supported by this server");
     $this->lusers($user);
     $this->motd($user);
+    if($this->config['ircd']['hostmask'] == "on")
+        $user->maskHost();
     $d = array('user'=>&$user);
     $this->runUserHooks('connect', $d);
 }
@@ -265,10 +267,10 @@ function join($user, $p=""){
                 $this->error($d['errno'], $user, $chan, $d['errstr']);
                 return false;
             }
+            $user->send(":{$user->prefix} JOIN $chan");
             $nchan->addUser($user, "O");
             $nchan->setTopic($user, "default topic!");
             $this->_channels[$nchan->name] = $nchan;
-            $user->send(":{$user->prefix} JOIN $chan");
             $user->addChannel($nchan);
         } else {
             $d = array('user'=>&$user, 'chan'=>&$this->_channels[$chan]);

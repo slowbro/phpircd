@@ -7,6 +7,10 @@ this readme is a changelog lololol
 * Fixed how modes are announced when doing multiple actions (like +oo-h slo slo2 slo)
 * Changed hook parameters. Now takes one array passed by ref. Can contain 'user','chan','extra' at the moment.
 * Added error code 482, ERR_CHANOPRIVSNEEDED, and 485, ERR_UNIQOPRIVSNEEDED.
+(edit 1)
+* Added hostmasking
+* Added user mode x and connect hook
+* Added hostmask* stuff in config.ini
 
 01/09/2012 -
 * Slowly working on converting modes to class format

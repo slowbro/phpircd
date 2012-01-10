@@ -55,6 +55,14 @@ function hasMode($m, $t=false){
     return false;
 }
 
+function maskHost(){
+    global $ircd;
+    $address = explode('.',$this->address);
+    $address['0'] = $ircd->config['ircd']['hostmask_prefix'].'-'.strtoupper(substr(hash('sha512', $address['0']), 0, 10));
+    $this->prefix = $this->nick."!".$this->username."@".implode('.', $address);
+    $this->setMode("x");
+}
+
 function removeChannel($chan){
     if(($k = array_search($chan->name, $this->channels)) !== FALSE)
         unset($this->channels[$k]);
@@ -66,7 +74,7 @@ function send($msg){
 
 function setMode($m){
     $this->modes[$m] = true;
-    $this->send(":{$this->nick} MODE {$this->nick} :+$m");
+    $this->send(":{$this->nick} MODE {$this->nick} +$m");
 }
 
 function writeBuffer(){
