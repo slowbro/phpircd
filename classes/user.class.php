@@ -61,7 +61,7 @@ function getModes(){
 function hasMode($m, $t=false){
     global $ircd;
     if(isset($this->modes[$m]))
-        if($ircd->userModes[$m]->type == 'array')
+        if($ircd->userModes[$m]->type == Mode::TYPE_A || $ircd->userModes[$m]->type ==  Mode::TYPE_P)
             return in_array($t, $this->modes[$m]);
         else
             return true;
@@ -71,10 +71,48 @@ function hasMode($m, $t=false){
 function maskHost(){
     global $ircd;
     $address = explode('.',$this->address);
-    $address['0'] = $ircd->config['ircd']['hostmask_prefix'].
+    if(count($address) == 2 && strlen($address['1']) < 5){
+        //mask things like slowbro.org, minecraft.net, etc
+        $address['0'] = $ircd->config['ircd']['hostmask_prefix'].
                     '-'.
                     strtoupper(substr(hash('sha512', $ircd->config['ircd']['hostmask_secret'].$address['0']), 0, $ircd->config['ircd']['hostmask_length']));
-    $this->prefix = $this->nick."!".$this->username."@".implode('.', $address);
+        $address = implode('.', $address);
+    } elseif(count($address) == 2 && strlen($address['1']) > 5) {
+        //mask things like localhost.localdomain
+        $address = implode('.', $address);
+        $address = $ircd->config['ircd']['hostmask_prefix'].
+                    '-'.
+                    strtoupper(substr(hash('sha512', $ircd->config['ircd']['hostmask_secret'].$address), 0, $ircd->config['ircd']['hostmask_length']));
+    } elseif(preg_match($ircd->ipv4Regex, $this->address)){
+        // mask ipv4 address
+        foreach($address as &$a){
+            $a = strtoupper(substr(hash('sha512', $ircd->config['ircd']['hostmask_secret'].$a), 0, $ircd->config['ircd']['hostmask_length']));
+        }
+        $address['3'] = "IP";
+        $address = implode('.', $address);
+    } else {
+        //mask things like ip20-30-60-90.phx.tc.cox.net, ip20.30.60.90gr1.phx.west.verizon.net, ect
+        $last = 0;
+        $mask = array();
+        foreach($address as $k=>$a){
+            if(preg_match("[0-9]", $a)){
+                $last = $k;
+            }
+        }
+        if($last == 0)
+            $last = 2;
+        if($last == count($address)-1)
+            $last -=1;
+        for($i=0;$i<=$last;$i++){
+            $mask[] = $address[$i];
+            unset($address[$i]);
+        }
+        $mask = $ircd->config['ircd']['hostmask_prefix'].
+                    '-'.
+                    strtoupper(substr(hash('sha512', $ircd->config['ircd']['hostmask_secret'].implode('.', $mask)), 0, $ircd->config['ircd']['hostmask_length']));
+        $address = $mask.'.'.implode('.', $address);
+    }
+    $this->prefix = $this->nick."!".$this->username."@".$address;
     $this->setModes("+x");
 }
 

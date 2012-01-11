@@ -1,4 +1,4 @@
-phpircd v0.4.12
+phpircd v0.4.13
 this readme is a changelog lololol
 
 01/11/2012 -
@@ -13,8 +13,17 @@ this readme is a changelog lololol
 * Fixed an issue causing hostmasking to be applied twice upon connection.
 * Made 004 RPL_MYINFO list actual usermodes available.
 * Added missing config options.
+* Version is now 0.4.11
 (edit 1)
 * Added all usermodes that will be used.
+* Version is now 0.4.12
+(edit 2)
+* Fixed hostmasking- now masks IPv4 addresses, short addresses like slowbro.org, and long addresses like node01.phx.somecompany.com differently.
+* Fixed ircd::__destruct() still using a socket function.
+* Added ircd::$ipv4Regex and replaced faulty IPv4 regex in ircd::createSocket().
+* Fixed Channel::hasMode().
+* Fixed TYPE_A and TYPE_P modes not ignoring unsetting values that aren't set.
+* Version is now 0.4.13
 
 01/10/2012 -
 * Cleaned up channel::setModes() a bit.
@@ -52,7 +61,7 @@ this readme is a changelog lololol
 
 01/04-05/2012 -
 * Fixed MODE #channel outputting array modes.
-* LUSERS not reports half-decent information
+* LUSERS now reports half-decent information
 * Fixed issue #2. The server now doesn't assume line-buffering on the client side.
 * Added User::readBuffer
 

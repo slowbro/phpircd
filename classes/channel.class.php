@@ -59,7 +59,7 @@ function getUserPrefix($user){
 function hasMode($m, $t=false){
     global $ircd;
     if(isset($this->modes[$m]))
-        if($ircd->chanModes[$m]->type == 'array')
+        if($ircd->chanModes[$m]->type == Mode::TYPE_A || $ircd->chanModes[$m]->type == Mode::TYPE_P)
             return in_array($t, $this->modes[$m]);
         else
             return true;
@@ -137,7 +137,7 @@ function setMode(&$user, $act, $mode, &$parts, &$what){
             if($act == '+'){
                 $this->modes[$mode->letter][] = $pt;
             } else {
-                if(($k = array_search($pt, $this->modes[$mode->letter])) !== FALSE)
+                if(($k = array_search($pt, @$this->modes[$mode->letter])) !== FALSE)
                     unset($this->modes[$mode->letter][$k]);
                 else
                     return false;

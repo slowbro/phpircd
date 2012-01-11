@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.12";
+var $version = "phpircd0.4.13";
 var $config;
 var $address;
 var $port;
@@ -17,6 +17,7 @@ var $network;
 var $allowed = array("join","part","lusers","mode","motd","names","nick","oper","ping","pong","privmsg","quit","topic","protoctl","user","who");
 var $nickRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\}]{1}[a-zA-Z0-9\[\]\\|^\`_\{\}]{0,}\$/";
 var $rnRegex = "/^[a-zA-Z\[\]\\\|^\`_\{\} \.]{1}[a-zA-Z0-9\[\]\\|^\`_\{\} \.]{0,}\$/";
+var $ipv4Regex = "/^[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}\$/";
 
 function newConnection($in, $user){
     $e = explode(" ", $in);
@@ -671,7 +672,7 @@ function __construct($config){
 
 function __destruct(){
     foreach($this->_sockets as $socket)
-        socket_close($socket);
+        fclose($socket);
 }
 
 function accept($socket, $ssl=false){
@@ -708,7 +709,7 @@ function accept($socket, $ssl=false){
 }
 
 function createSocket($ip, $port, $ssl=false){
-    if(!preg_match("/$[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}^/", $ip))
+    if(!preg_match($this->ipv4Regex, $ip))
         $ip = '['.$ip.']';
     if($ssl){
         $arr = array('ssl'=>
