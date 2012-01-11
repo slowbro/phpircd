@@ -1,9 +1,29 @@
 <?php
 
 $userModes = array(
+    'a' => new Mode('a','user',Mode::TYPE_D),
+    'A' => new Mode('A','user',Mode::TYPE_D),
+    'b' => new Mode('b','user',Mode::TYPE_D),
+    'B' => new Mode('B','user',Mode::TYPE_D),
+    'C' => new Mode('C','user',Mode::TYPE_D),
+    'd' => new Mode('d','user',Mode::TYPE_D),
+    'g' => new Mode('g','user',Mode::TYPE_D),
+    'G' => new Mode('G','user',Mode::TYPE_D),
+    'h' => new Mode('h','user',Mode::TYPE_D),
+    'H' => new Mode('H','user',Mode::TYPE_D),
     'i' => new Mode('i','user',Mode::TYPE_D),
+    'N' => new Mode('N','user',Mode::TYPE_D),
+    'o' => new Mode('o','user',Mode::TYPE_D),
+    'O' => new Mode('O','user',Mode::TYPE_D),
+    'p' => new Mode('p','user',Mode::TYPE_D),
+    'q' => new Mode('q','user',Mode::TYPE_D),
+    'r' => new Mode('r','user',Mode::TYPE_D),
+    'R' => new Mode('R','user',Mode::TYPE_D),
     's' => new Mode('s','user',Mode::TYPE_C),
+    't' => new Mode('t','user',Mode::TYPE_D),
+    'T' => new Mode('T','user',Mode::TYPE_D),
     'w' => new Mode('w','user',Mode::TYPE_D),
+    'W' => new Mode('W','user',Mode::TYPE_D),
     'x' => new Mode('x','user',Mode::TYPE_D, array(
             'connect' => function(&$d){
                 if($d['ircd']->config['ircd']['hostmask'] == "on")
