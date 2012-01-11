@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.10";
+var $version = "phpircd0.4.11";
 var $config;
 var $address;
 var $port;
@@ -221,14 +221,12 @@ function welcome($user){
     $user->send(":{$this->servname} 001 {$user->nick} :Welcome to the {$this->network} IRC network, {$user->prefix}");
     $user->send(":{$this->servname} 002 {$user->nick} :Your host is {$this->servname}, running {$this->version}");
     $user->send(":{$this->servname} 003 {$user->nick} :This server was created {$this->createdate}");
-    $user->send(":{$this->servname} 004 {$user->nick} {$this->servname} {$this->version} iowghraAsORTVSxNCWqBzvdHtGp ".implode(array_keys($this->chanModes)));
-    $_005 = "";
-    $user->send(":{$this->servname} 005 {$user->nick} CHANTYPES={$this->config['ircd']['chantypes']} PREFIX=(qaohv)~&@%+ NETWORK={$this->config['me']['network']} :are supported by this server");
+    $user->send(":{$this->servname} 004 {$user->nick} {$this->servname} {$this->version} ".implode(array_keys($this->userModes))." ".implode(array_keys($this->chanModes)));
+    $this->isupport($user);
     $this->lusers($user);
     $this->motd($user);
-    if($this->config['ircd']['hostmask'] == "on")
-        $user->maskHost();
-    $d = array('user'=>&$user);
+    $user->setModes("+iw");
+    $d = array('ircd'=>&$this, 'user'=>&$user);
     $this->runUserHooks('connect', $d);
 }
 
@@ -309,6 +307,7 @@ function mode($user, $p){
     $p = explode(" ", $p);
     $target = $p['0'];
     if($this->channelExists($target)){
+        //chan mode(s)
         $channel = $this->_channels[$target];
         if(count($p) == 1){
             $user->send(":{$this->servname} 324 {$user->nick} {$channel->name} ".$channel->getModes());
@@ -320,7 +319,20 @@ function mode($user, $p){
         }
     } else {
         //user mode(s)
-        //1: mask (+a +aa-o +a-ooa)  2...: usernames
+        //1: mask (+a, +aa-o, +a-ooa, etc)  2...: params
+        if(!$this->getUserByNick($target)){
+            $this->error(401, $user, $target);
+            return false;
+        }
+        if($target != $user->nick)
+            return false;
+        if(count($p) == 1){
+            $user->send(":{$this->servname} 221 {$user->nick} ".$user->getModes());
+        } else {
+            unset($p['0']);
+            $modes = implode(" ", $p);
+            $user->setModes($modes);
+        }
     }
 }
 
@@ -794,6 +806,57 @@ function getUserBySocket($s){
             return $u;
     }
     return false;
+}
+
+function isupport($user){
+    $chanmodes = array();
+    foreach($this->chanModes as $m)
+        if($m->type != Mode::TYPE_P)
+           @$chanmodes[$m->type] .= $m->letter;
+    ksort($chanmodes);
+    $chanmodes = implode(',', $chanmodes);
+    $_005 = array(
+        'MAXCHANNELS' => 20,
+        'CHANLIMIT'   => $this->config['ircd']['chanlimit'],
+        'MAXLIST'     => "b:{$this->config['ircd']['maxbans']},e:{$this->config['ircd']['maxexcepts']},I:{$this->config['ircd']['maxinviteexcepts']}",
+        'NICKLEN'     => $this->config['ircd']['nicklen'],
+        'CHANNELLEN'  => $this->config['ircd']['chanlen'],
+        'TOPICLEN'    => $this->config['ircd']['topiclen'],
+        'KICKLEN'     => $this->config['ircd']['kicklen'],
+        'AWAYLEN'     => $this->config['ircd']['awaylen'],
+        'MAXTARGETS'  => 20,
+        'CHANTYPES'   => $this->config['ircd']['chantypes'],
+        'PREFIX'      => "(qaohv)~&@%+",
+        'NETWORK'     => $this->config['me']['network'],
+        'CHANMODES'   => $chanmodes,
+        'WALLCHOPS'   => '',
+        'WATCH'       => $this->config['ircd']['maxwatch'],
+        'WATCHOPTS'   => 'A',
+        'SILENCE'     => $this->config['ircd']['maxsilence'],
+        'MODES'       => $this->config['ircd']['maxmodes'],
+        'CASEMAPPING' => "ascii",
+        'EXTBAN'      => "~,cqnr",
+        'ELIST'       => "MNUCT",
+        'STATUSMSG'   => "~&@%+",
+        'EXCEPTS'     => '',
+        'INVEX'       => ''
+    );
+    $pre = ":{$this->servname} 005 {$user->nick} ";
+    $post = "are supported by this server";
+    while (count($_005) != 0){
+        $len = $nlen = strlen($pre.$post);
+        $send = "";
+        for($i=0;$i<2;$i++){
+            foreach($_005 as $k=>$v){
+                $str = $k.(!empty($v)?"=$v":'').' ';
+                if($nlen+strlen($str) <= 510){
+                    $send .= $str;
+                    unset($_005[$k]);
+                }
+            }
+        }
+        $user->send($pre.$send.$post);
+    }
 }
 
 function nickInUse($nick){

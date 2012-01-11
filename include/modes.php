@@ -1,32 +1,37 @@
 <?php
 
 $userModes = array(
-    /*'i' => array(
-        'type' => 'bool',
-        'extra' => false
-    ),
-    'w' => array(
-        'type' => 'bool',
-        'extra' => false
-    ),*/
-    'x' => new Mode('x','user','bool',false, array(
+    'i' => new Mode('i','user',Mode::TYPE_D),
+    's' => new Mode('s','user',Mode::TYPE_C),
+    'w' => new Mode('w','user',Mode::TYPE_D),
+    'x' => new Mode('x','user',Mode::TYPE_D, array(
             'connect' => function(&$d){
                 if($d['ircd']->config['ircd']['hostmask'] == "on")
                     $d['user']->maskHost();
             }
     )),
-    'z' => new Mode('z','user','bool',false, array(
+    'z' => new Mode('z','user',Mode::TYPE_D, array(
             'connect' => function(&$d){
                 if($d['user']->ssl)
-                    $d['user']->setMode('z');
+                    $d['user']->setModes('+z');
+            },
+            'set' => function(&$d){
+                if(!$d['user']->ssl)
+                    return false;
+                return true;
+            },
+            'unset' => function(&$d){
+                if($d['user']->ssl)
+                    return false;
+                return true;
             }
     ))
 );
 
 $channelModes = array(
-    'a' => new Mode('a','channel','array',true),
-    'A' => array(),
-    'b' => new Mode('b','channel','array',true, array(
+    'a' => new Mode('a','channel',Mode::TYPE_P),
+    'A' => new Mode('A','channel',Mode::TYPE_D),
+    'b' => new Mode('b','channel',Mode::TYPE_A, array(
             'join'=> function(&$d){
                 $d['errno'] = 404;
                 $d['errstr'] = ": You are banned (+b) ({$d['chan']->name})";
@@ -35,35 +40,21 @@ $channelModes = array(
                 return true;
             }
         )),
-    'c' => array(),
-    'C' => array(),
-    'e' => array(
-        'extra'=>true,
-        'type'=>'array'
-    ),
-    'f' => array(
-        'extra'=>true
-    ),
-    'G' => array(),
-    'h' => new Mode('h','channel','array',true),
-    'H' => array(),
-    'i' => array(),
-    'I' => array(
-        'extra'=>true,
-        'type'=>'array'
-    ),
-    'J' => array(),
-    'k' => array(
-        'extra'=>true
-    ),
-    'K' => array(),
-    'l' => array(
-        'extra'=>true
-    ),
-    'L' => array(
-        'extra'=>true
-    ),
-    'm' => new Mode('m','channel','bool',false, array(
+    'c' => new Mode('c','channel',Mode::TYPE_D),
+    'C' => new Mode('C','channel',Mode::TYPE_D),
+    'e' => new Mode('e','channel',Mode::TYPE_A),
+    'f' => new Mode('f','channel',Mode::TYPE_C),
+    'G' => new Mode('G','channel',Mode::TYPE_D),
+    'h' => new Mode('h','channel',Mode::TYPE_P),
+    'H' => new Mode('H','channel',Mode::TYPE_D),
+    'i' => new Mode('i','channel',Mode::TYPE_D),
+    'I' => new Mode('I','channel',Mode::TYPE_A),
+    'J' => new Mode('J','channel',Mode::TYPE_C),
+    'k' => new Mode('k','channel',Mode::TYPE_B),
+    'K' => new Mode('K','channel',Mode::TYPE_D),
+    'l' => new Mode('l','channel',Mode::TYPE_C),
+    'L' => new Mode('L','channel',Mode::TYPE_C),
+    'm' => new Mode('m','channel',Mode::TYPE_D, array(
             'privmsg' => function(&$d){
                 $d['errno'] = 404;
                 $d['errstr'] = ":You need voice (+v) ({$d['chan']->name})";
@@ -73,16 +64,16 @@ $channelModes = array(
                 return true;
             }
         )),
-    'M' => array(),
-    'n' => array(),
-    'N' => array(),
-    'o' => new Mode('i','channel','array',true),
-    'O' => new Mode('O','channel','array',true),
-    'p' => array(),
-    'q' => new Mode('q','channel','array',true),
-    'Q' => array(),
-    'r' => array(),
-    'R' => new Mode('R','channel','bool',false, array(
+    'M' => new Mode('M','channel',Mode::TYPE_D),
+    'n' => new Mode('n','channel',Mode::TYPE_D),
+    'N' => new Mode('N','channel',Mode::TYPE_D),
+    'o' => new Mode('o','channel',Mode::TYPE_P),
+    'O' => new Mode('O','channel',Mode::TYPE_P),
+    'p' => new Mode('p','channel',Mode::TYPE_D),
+    'q' => new Mode('q','channel',Mode::TYPE_P),
+    'Q' => new Mode('Q','channel',Mode::TYPE_D),
+    'r' => new Mode('r','channel',Mode::TYPE_D),
+    'R' => new Mode('R','channel',Mode::TYPE_D, array(
             'join' => function(&$d){
                 $d['errno'] = 404;
                 $d['errstr'] = ":You must be registered with services to join (+r)";
@@ -91,10 +82,11 @@ $channelModes = array(
                 return true;
             }
         )),
-    's' => array(),
-    'S' => array(),
-    't' => array(),
-    'v' => new Mode('v','channel','array', true, array(
+    's' => new Mode('s','channel',Mode::TYPE_D),
+    'S' => new Mode('S','channel',Mode::TYPE_D),
+    't' => new Mode('t','channel',Mode::TYPE_D),
+    'u' => new Mode('u','channel',Mode::TYPE_D),
+    'v' => new Mode('v','channel',Mode::TYPE_P, array(
             'set' => function(&$d){
                 $d['errstr'] = "-v";
                 $d['errno'] = 482;
@@ -126,7 +118,7 @@ $channelModes = array(
                 return true;
             }
         )),
-    'V' => new Mode('V','channel','bool', false, array(
+    'V' => new Mode('V','channel',Mode::TYPE_D, array(
             'invite' => function(&$d){
                 $d['errno'] = 0;
                 $d['errstr'] = false;
@@ -135,7 +127,7 @@ $channelModes = array(
                 return true;
             }
         )),
-    'z' => new Mode('z','channel','bool', false, array(
+    'z' => new Mode('z','channel',Mode::TYPE_D, array(
             'join' => function(&$d){
                 $d['errno'] = 404;
                 $d['errstr']  = ":You must be connected via SSL to join (+z)";

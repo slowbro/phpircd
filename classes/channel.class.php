@@ -34,6 +34,8 @@ function getModes(){
         if(is_array($e))
             continue;
         $modes .= "$m";
+        if($e !== true)
+           $extra[] = $e;
     }
     return $modes.' '.implode(' ', $extra);
 }
@@ -110,71 +112,97 @@ function send($msg, $excl=""){
     }
 }
 
-function setModes($user, $mask){
+function setMode(&$user, $act, $mode, &$parts, &$what){
+    global $ircd;
+    $atext = ($act=='+'?'set':'unset');
+    //first, check set/unset hook
+    if(isset($mode->hooks[$atext])){
+        $d = array('user'=>&$user, 'chan'=>&$this, 'extra'=>@$parts['0']);
+        if(!$mode->hooks[$atext](&$d)){
+            if(isset($d['errno']))
+                $ircd->error($d['errno'], $this, @$d['errstr']);
+            return false;
+        }
+    }
+    $ms = isset($this->modes[$mode->letter]);
+    if($mode->type == Mode::TYPE_A || $mode->type == Mode::TYPE_P){
+        //modes like +beI and +qaohv
+        $pt = array_shift($parts);
+        // ignore if regex mismatch
+        if(isset($mode->regex) && !preg_match(@$mode->regex, $pt)) return false;
+        //if empty param, list
+        if($pt === NULL){
+            
+        } else {
+            if($act == '+'){
+                $this->modes[$mode->letter][] = $pt;
+            } else {
+                if(($k = array_search($pt, $this->modes[$mode->letter])) !== FALSE)
+                    unset($this->modes[$mode->letter][$k]);
+                else
+                    return false;
+            }
+            $what['params'][] = $pt;
+        }
+    } elseif($mode->type == Mode::TYPE_B || $mode->type == Mode::TYPE_C){
+        //modes like +fJklL
+        $pt = array_shift($parts);
+        // 1: ignore if ((regex is set AND !match regex) OR param is missing) AND (act is add OR type is TYPE_B) OR...
+        // 2: ignore if mode is already set AND act is add OR...
+        // 3: ignore if mode is not set AND act is remove
+        if(((isset($mode->regex) && !preg_match(@$mode->regex, $pt)) || $pt === NULL ) && ($act == '+' || $mode->type == Mode::TYPE_B)) return false;
+        if($ms && $act == '+') return false;
+        if(!$ms && $act == '-') return false;
+        if($act == '+')
+            $this->modes[$mode->letter] = $pt;
+        else
+            unset($this->modes[$mode->letter]);
+        $what['params'][] = $pt;
+    } elseif($mode->type == Mode::TYPE_D){
+        //other toggleable modes
+        // ignore not already set
+        if(($act == '+' && $ms) || ($act == '-' && !$ms))
+            return false;
+        if($act == '+')
+            $this->modes[$mode->letter] = true;
+        else
+            unset($this->modes[$mode->letter]);
+    }
+    $what[] = $act.$mode->letter;
+    return true;
+}
+
+function setModes(&$user, $mask){
     global $ircd;
     $parts = explode(" ", $mask);
-    $mask = str_split($parts['0']);
-    array_shift($parts);
-    $act = $add = $take = $extra = "";
+    $mask = str_split(array_shift($parts));
+    $act = "";
+    $what = array();
+    //set the modes and gather info in $what
     foreach($mask as $c){
         if($c == '+' || $c == '-'){
             $act = $c;
             continue;
         }
-        if(!array_key_exists($c, $ircd->chanModes)){
+        if($act == "")
+            continue;
+        if(!($mode = $ircd->chanModes[$c])){
             $ircd->error(472, $user, $c);
             continue;
-        }   
-        if($act == '+'){
-            if(@$ircd->chanModes[$c]->extra==true && !isset($parts['0'])){
-                continue;
-            }
-            if(isset($ircd->chanModes[$c]->hooks['set'])){
-                $d = array('user'=>&$user, 'chan'=>&$this, 'extra'=>@$parts['0']);
-                if(!$ircd->chanModes[$c]->hooks['set'](&$d)){
-                    $ircd->error($d['errno'], $user, @$d['errstr']);
-                    continue;
-                }
-            }
-            if(@$ircd->chanModes[$c]->extra==true && isset($parts['0'])){
-                if(@$ircd->chanModes[$c]->type == 'array'){
-                    $as = array_shift($parts);
-                    $extra .= ' '.$as;
-                    $this->modes[$c][] = $as;
-                    $add .= $c;
-                } else {
-                    $as = array_shift($parts);
-                    $extra .= $as;
-                    $this->modes[$c] = $as;
-                    $add .= $c;
-                }
-            } elseif(isset($ircd->chanModes[$c])){
-                $this->modes[$c] = true;
-                $add .= $c;
-            }
-        } else {
-            if(isset($ircd->chanModes[$c]->hooks['unset'])){  
-                $d = array('user'=>&$user, 'chan'=>&$this, 'extra'=>@$parts['0']);
-                if(!$ircd->chanModes[$c]->hooks['unset'](&$d)){
-                    $ircd->error($d['errno'], $user, @$d['errstr']);
-                    continue;
-                }
-            }
-            if($ircd->chanModes[$c]->extra==true && @$ircd->chanModes[$c]->type == 'array'){
-                $k = array_search(current($parts), $this->modes[$c]);
-                if($k !== FALSE){
-                    unset($this->modes[$c][$k]);
-                    $extra .= ' '.array_shift($parts);
-                    $take .= $c;
-                }
-            } else {
-                unset($this->modes[$c]);
-                $take .= $c;
-            }
         }
+        $this->setMode($user, $act, $mode, $parts, $what);
     }
-    if($add.$take != "")
-        $this->send(":{$user->prefix} MODE $this->name ".(!empty($add)?"+$add":'').(!empty($take)?"-$take":'').(!empty($extra)?$extra:''));
+    //parse $what and ooutput what modes were actually set
+    $p = @implode(' ',@$what['params']);
+    unset($what['params']);
+    $ta = $str = "";
+    foreach($what as $w){
+        if($ta != ($a = substr($w, 0, 1)))
+            $str .= $ta = $a;
+        $str .= substr($w, 1, 2);
+    }
+    if(!empty($str))
+        $this->send(":{$user->prefix} MODE {$this->name} ".$str.(!empty($p)?' '.$p:''));
 }
 
 function setTopic($user, $msg){
