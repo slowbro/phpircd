@@ -1,6 +1,21 @@
 phpircd v0.4.13
 this readme is a changelog lololol
 
+01/13/2012 -
+* Fixed NAMES not adding prefixes correctly.
+* Fixed "Client Exited" not being shown when conditions are right.
+* Hushed ircd::write()'s fwrite().
+* Added bitwise permissions system.
+    - Added Channel::hasPrivs() method.
+    - Added Mode::CHANNEL_* constants.
+    - Added some hookpoint checks.
+* Fixed new channel create giving user +O when they should have +o.
+* Changed Channel::getUserPrefix() to use new Mode::$prefix.
+* Removed Channel::is[Qop|Aop|Op|Hop]().
+* Changed Channel::hasVoice() to use Mode::CHANNEL_VOICE privilege.
+* Added error 499 ERR_CHANOWNPRIVNEEDED.
+* Version is now 0.4.14
+
 01/11/2012 -
 * Modes now have one of five types: A (list), B (requires parameter for set/unset), C (requires parameter for set), D (toggle), or P (list, special).
 * Converted all channel modes to the new format and added usermodes +is.

@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.13";
+var $version = "phpircd0.4.14";
 var $config;
 var $address;
 var $port;
@@ -214,6 +214,9 @@ function error($numeric, $user, $extra="", $override=false){
     break;
     case '485':
     $message = ":You are not the channel owner.";
+    break;
+    case '499':
+    $message = ":You're not a channel owner.";
     }
     $user->send($prefix.$message);
 }
@@ -267,7 +270,7 @@ function join($user, $p=""){
                 return false;
             }
             $user->send(":{$user->prefix} JOIN $chan");
-            $nchan->addUser($user, "O");
+            $nchan->addUser($user, true);
             $nchan->setTopic($user, "default topic!");
             $this->_channels[$nchan->name] = $nchan;
             $user->addChannel($nchan);
@@ -370,7 +373,7 @@ function names($user, $p){
         $chan = $this->_channels[$p['0']];
         $names = $chan->users;
         foreach($names as $k => $v){
-                $pfx = $chan->getUserPrefix($user);
+                $pfx = $chan->getUserPrefix($this->_clients[$k]);
                 $names[$k] = str_replace("@@", "@", $pfx).$this->_clients[$k]->nick;
         }
         if(!$user->namesx){
@@ -743,7 +746,7 @@ function read($sock){
 function write($sock, $data){
     $this->debug(">> ".$data);
     $data = substr($data, 0, 509)."\r\n";
-    fwrite($sock, $data);
+    @fwrite($sock, $data);
 }
 
 function close($user, $sock="legacy"){

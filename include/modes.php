@@ -49,7 +49,18 @@ $userModes = array(
 );
 
 $channelModes = array(
-    'a' => new Mode('a','channel',Mode::TYPE_P),
+    'a' => new Mode('a','channel',Mode::TYPE_P, array(
+            'set' => function(&$d){
+                $d['errno'] = 499;
+                if(!$d['chan']->hasPrivs($d['user'], Mode::CHANNEL_MODE_a))
+                    return false;
+                return true;
+            }
+        ), array(
+            'weight'=>10,
+            'prefix'=>'&',
+            'privs'=> Mode::CHANNEL_AOP | Mode::CHANNEL_OP | Mode::CHANNEL_HOP | Mode::CHANNEL_VOICE
+        )),
     'A' => new Mode('A','channel',Mode::TYPE_D),
     'b' => new Mode('b','channel',Mode::TYPE_A, array(
             'join'=> function(&$d){
@@ -65,7 +76,11 @@ $channelModes = array(
     'e' => new Mode('e','channel',Mode::TYPE_A),
     'f' => new Mode('f','channel',Mode::TYPE_C),
     'G' => new Mode('G','channel',Mode::TYPE_D),
-    'h' => new Mode('h','channel',Mode::TYPE_P),
+    'h' => new Mode('h','channel',Mode::TYPE_P, array(), array(
+            'weight'=>2,
+            'prefix'=>'%',
+            'privs'=> Mode::CHANNEL_HOP | Mode::CHANNEL_VOICE
+        )),
     'H' => new Mode('H','channel',Mode::TYPE_D),
     'i' => new Mode('i','channel',Mode::TYPE_D),
     'I' => new Mode('I','channel',Mode::TYPE_A),
@@ -79,7 +94,7 @@ $channelModes = array(
                 $d['errno'] = 404;
                 $d['errstr'] = ":You need voice (+v) ({$d['chan']->name})";
                 if($d['chan']->hasMode('m'))
-                    if(!$d['chan']->hasVoice($d['user']))
+                    if(!$d['chan']->hasPrivs($d['user'], Mode::CHANNEL_VOICE))
                         return false;
                 return true;
             }
@@ -87,10 +102,25 @@ $channelModes = array(
     'M' => new Mode('M','channel',Mode::TYPE_D),
     'n' => new Mode('n','channel',Mode::TYPE_D),
     'N' => new Mode('N','channel',Mode::TYPE_D),
-    'o' => new Mode('o','channel',Mode::TYPE_P),
-    'O' => new Mode('O','channel',Mode::TYPE_P),
+    'o' => new Mode('o','channel',Mode::TYPE_P, array(
+            'set' => function(&$d){
+                $d['errno'] = 482;
+                if(!$d['chan']->hasPrivs($d['user'], Mode::CHANNEL_MODE_o))
+                    return false;
+                return true;
+            }
+        ), array(
+            'weight'=>5,
+            'prefix'=>'@',
+            'privs'=>Mode::CHANNEL_OP | Mode::CHANNEL_HOP | Mode::CHANNEL_VOICE
+        )),
+    'O' => new Mode('O','channel',Mode::TYPE_D),
     'p' => new Mode('p','channel',Mode::TYPE_D),
-    'q' => new Mode('q','channel',Mode::TYPE_P),
+    'q' => new Mode('q','channel',Mode::TYPE_P, array(), array(
+            'weight'=>20,
+            'prefix'=>'~',
+            'privs'=>Mode::CHANNEL_QOP | Mode::CHANNEL_AOP | Mode::CHANNEL_OP | Mode::CHANNEL_HOP | Mode::CHANNEL_VOICE
+        )),
     'Q' => new Mode('Q','channel',Mode::TYPE_D),
     'r' => new Mode('r','channel',Mode::TYPE_D),
     'R' => new Mode('R','channel',Mode::TYPE_D, array(
@@ -108,9 +138,9 @@ $channelModes = array(
     'u' => new Mode('u','channel',Mode::TYPE_D),
     'v' => new Mode('v','channel',Mode::TYPE_P, array(
             'set' => function(&$d){
-                $d['errstr'] = "-v";
+                $d['errstr'] = "+v";
                 $d['errno'] = 482;
-                if(!$d['chan']->isOp($d['user']))
+                if(!$d['chan']->hasPrivs($d['user'], Mode::CHANNEL_MODE_v))
                     return false;
                 $d['errno'] = 431;
                 if(!isset($d['extra']))
@@ -126,7 +156,7 @@ $channelModes = array(
                 if($d['user']->nick == $d['extra'])
                     return true;
                 $d['errno'] = 482;
-                if(!$d['chan']->isOp($d['user']))
+                if(!$d['chan']->hasPrivs($d['user'], Mode::CHANNEL_MODE_v))
                     return false;
                 $d['errno'] = 431;
                 if(!isset($d['extra']))
@@ -137,12 +167,16 @@ $channelModes = array(
                     return false;
                 return true;
             }
+        ), array(
+            'weight'=>1,
+            'prefix'=>'+',
+            'privs'=> Mode::CHANNEL_VOICE
         )),
     'V' => new Mode('V','channel',Mode::TYPE_D, array(
             'invite' => function(&$d){
                 $d['errno'] = 0;
                 $d['errstr'] = false;
-                if($d['chan']->hasMode('V') && !$d['chan']->isOp($d['user']))
+                if($d['chan']->hasMode('V') && !$d['chan']->hasPrivs($d['user'], Mode::CHANNEL_MODE_V))
                     return false;
                 return true;
             }

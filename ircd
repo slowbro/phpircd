@@ -55,7 +55,7 @@ while(true){
             } else {
                 $ircd->debug("Closing Link: client ".(empty($user->prefix)?$user->address:$user->prefix).": Client Exited");
                 unset($reads[$key]);
-                $ircd->quit($user, false);
+                $ircd->quit($user, "Client Exited");
             }
         } else {
             $ircd->debug("Closing Link: client {$user->prefix}: ".socket_strerror(socket_last_error($value)));

@@ -20,10 +20,10 @@ function __construct($id, $name){
     $this->created = time();
 }
 
-function addUser(&$user, $mode=false){
+function addUser(&$user, $creator=false){
     $this->users[$user->id] = true;
-    if($mode)
-        $this->setModes($user, '+'.$mode." {$user->nick}");
+    if($creator)
+        $this->modes['o'][] = $user->nick;
 }
 
 function getModes(){
@@ -41,19 +41,14 @@ function getModes(){
 }
 
 function getUserPrefix($user){
-    if(@in_array($user->nick, @$this->modes['q']))
-        return '~';
-    if(@in_array($user->nick, @$this->modes['a']))
-        return '&';
-    if(@in_array($user->nick, @$this->modes['O']))
-        return '@';
-    if(@in_array($user->nick, @$this->modes['o']))
-        return '@';
-    if(@in_array($user->nick, @$this->modes['h']))
-        return '%';
-    if(@in_array($user->nick, @$this->modes['v']))
-        return '+';
-    return '';
+    global $ircd;
+    $pfx = '';
+    $n = 0;
+    foreach($ircd->chanModes as $m)
+        if($m->type == Mode::TYPE_P && isset($m->prefix) && $this->hasMode($m->letter, $user->nick))
+            if($m->privs > $n)
+                $pfx = $m->prefix;
+    return $pfx;
 }
 
 function hasMode($m, $t=false){
@@ -66,28 +61,19 @@ function hasMode($m, $t=false){
     return false;
 }
 
-function hasVoice($user){
-    return ($this->hasMode('v', $user->nick) || $this->isOwner($user) || $this->isAop($user) || $this->isOp($user) || $this->isHop($user));
-}
-
-function isAop($user){
-    return ($this->hasMode('a', $user->nick) || $this->isOwner($user));
+function hasPrivs($user, $priv){
+    global $ircd;
+    $upriv = 0;
+    foreach($ircd->chanModes as $m)
+        if($m->type == Mode::TYPE_P && isset($m->privs) && $this->hasMode($m->letter, $user->nick))
+            $upriv = $upriv | $m->privs;
+    if($upriv & $priv)
+        return true;
+    return false;
 }
 
 function isBanned($user){
     return false;
-}
-
-function isHop($user){
-    return $this->hasMode('h', $user->nick);
-}
-
-function isOp($user){
-    return ($this->hasMode('o', $user->nick) || $this->hasMode('O', $user->nick) || $this->isAop($user) || $this->isOwner($user));
-}
-
-function isOwner($user){
-    return $this->hasMode('q', $user->nick);
 }
 
 function nick($user, $oldnick){
@@ -120,7 +106,7 @@ function setMode(&$user, $act, $mode, &$parts, &$what){
         $d = array('user'=>&$user, 'chan'=>&$this, 'extra'=>@$parts['0']);
         if(!$mode->hooks[$atext](&$d)){
             if(isset($d['errno']))
-                $ircd->error($d['errno'], $this, @$d['errstr']);
+                $ircd->error($d['errno'], $user, @$d['errstr']);
             return false;
         }
     }
