@@ -2,7 +2,7 @@
 
 class ircd {
 
-var $version = "phpircd0.4.14";
+var $version = "phpircd0.4.15";
 var $config;
 var $address;
 var $port;
@@ -200,22 +200,28 @@ function error($numeric, $user, $extra="", $override=false){
     case 451:
     $message = $extra." :You have not registered.";
     break;
-    case '461':
+    case 461:
     $message = strtoupper($extra)." :Not enough parameters.";
     break;
-    case '462':
+    case 462:
     $message = ":You may not register more than once.";
     break;
-    case '472':
+    case 464:
+    $message = ":Incorrect password.";
+    break;
+    case 472:
     $message = "$extra :is unknown mode char to me";
     break;
-    case '482':
+    case 482:
     $message = ":You do not have the proper channel privileges to do that.".(isset($extra)?" ($extra)":"");
     break;
-    case '485':
+    case 485:
     $message = ":You are not the channel owner.";
     break;
-    case '499':
+    case 491:
+    $message = ":No O-lines for your host.";
+    break;
+    case 499:
     $message = ":You're not a channel owner.";
     }
     $user->send($prefix.$message);
@@ -441,7 +447,40 @@ function nick($user, $p){
 }
 
 function oper($user, $p){
+    $p = explode(" ", $p);
+    if(count($p) != 2){
+        $this->error(461, $user, 'OPER');
+        return false;
+    }
+    $opers = parse_ini_file('opers.ini', true);
+    //if that oper doesn't exist
+    if(!isset($opers[$p[0]])){
+        $this->error(491, $user);
+        return false;
+    }
+    $oper = $opers[$p[0]];
+    //if wrong host (placeholder so i don't forget the error code)
+    if(false){
+        $this->error(491, $user);
+        return false;
+    }
+    switch($oper['pass-enc']){
+        case 'sha1':
+            $inpass = sha1($p[1]);
+        break;
+        case 'md5':
+            $inpass = md5($p[1]);
+        break;
+        case 'plain':
+            $inpass = $p[1];
+    }
+    //wrong password
+    if($inpass != $oper['pass']){
+        $this->error(464, $user);
+        return false;
+    }
     $user->oper = true;
+    $user->send(":{$this->servname} 381 :You are now an IRC Operator.");
 }
 
 function part($user, $p){

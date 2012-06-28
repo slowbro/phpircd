@@ -1,5 +1,12 @@
-phpircd v0.4.13
+phpircd v0.4.15
 this readme is a changelog lololol
+
+06/27/2012 -
+* Added error code 464: ERR_PASSWDMISMATCH
+* Added error code 491: ERR_NOOPERHOST
+* Added OPER command functionality, minus userhost-checking and mode stuff.
+* Changed opers.ini: 'pass-enc' previously 'enc'
+* Removed some lingering single-quites in ircd::error()
 
 01/13/2012 -
 * Fixed NAMES not adding prefixes correctly.
