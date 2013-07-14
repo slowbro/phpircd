@@ -77,8 +77,8 @@ function maskHost(){
                     '-'.
                     strtoupper(substr(hash('sha512', $ircd->config['ircd']['hostmask_secret'].$address['0']), 0, $ircd->config['ircd']['hostmask_length']));
         $address = implode('.', $address);
-    } elseif(count($address) == 2 && strlen($address['1']) > 5) {
-        //mask things like localhost.localdomain
+    } elseif((count($address) == 2 && strlen($address['1']) > 5) || count($address) == 1){
+        //mask things like localhost.localdomain, localhost, myhost, etc
         $address = implode('.', $address);
         $address = $ircd->config['ircd']['hostmask_prefix'].
                     '-'.
