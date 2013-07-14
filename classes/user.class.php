@@ -131,7 +131,7 @@ function setMode($act, $mode, &$parts, &$what){
     //first, check set/unset hook
     if(isset($mode->hooks[$atext])){    
         $d = array('user'=>&$this, 'extra'=>@$parts['0']);
-        if(!$mode->hooks[$atext](&$d)){
+        if(!$mode->hooks[$atext]($d)){
             if(isset($d['errno']))
                 $ircd->error($d['errno'], $this, @$d['errstr']);
             return false;

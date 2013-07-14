@@ -922,14 +922,14 @@ function operList(){
 function runUserHooks($hook, &$data){
     foreach($this->userModes as $m)
         if(isset($m->hooks[$hook]))
-            if(!$m->hooks[$hook](&$data))
+            if(!$m->hooks[$hook]($data))
                 return false;
     return true;
 }
 function runChannelHooks($hook, &$data){
     foreach($this->chanModes as $m)
         if(isset($m->hooks[$hook]))
-            if(!$m->hooks[$hook](&$data))
+            if(!$m->hooks[$hook]($data))
                 return false;
     return true;
 }
